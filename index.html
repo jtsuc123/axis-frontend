@@ -1317,7 +1317,7 @@ async function saveFinTx(){
   // Save correction for learning
   if(finState.editingTxId){
     var original=finState.allTxs.find(t=>t.id===finState.editingTxId)
-    if(original&&(original.category!==tx.category||original.subcategory!==tx.subcategory||original.account!==tx.account)){
+    if(original){
       POST('/orbit/examples',{user_input:null,bad_parse:{description:original.description,category:original.category,subcategory:original.subcategory,account:original.account},correction:{description:tx.description,category:tx.category,subcategory:tx.subcategory,account:tx.account,type:tx.type},source:'manual_edit'})
     }
   }
