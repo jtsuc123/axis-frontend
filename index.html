@@ -1064,7 +1064,7 @@ async function loadFinanceData(){
   const res=await GET('/finance/data')
   if(!res?.success){toast('Finance data error');return}
   finState.data=res; finState.allTxs=res.transactions||[]
-  var now=new Date(); finState.selectedMonth={year:now.getFullYear(),month:now.getMonth()}
+  var now=new Date(); if(!finState.selectedMonth){finState.selectedMonth={year:now.getFullYear(),month:now.getMonth()}}
   renderFinanceAll()
   const fxRes=await GET('/finance/fx')
   if(fxRes?.rates){finState.fxRates=fxRes.rates;updateFxLabel();renderFinanceAll()}
@@ -1366,7 +1366,7 @@ async function deleteOutstanding(){
 // ════════════════════════════════════════════════════════════
 var orbitHistory=[], orbitOpen=false
 
-function openOrbit()  { var p=document.getElementById('orbit-popup'); p.style.display='flex'; orbitOpen=true; if(!orbitHistory.length) orbitAddBubble('axis','How can I assist you?'); setTimeout(()=>document.getElementById('orbit-input').focus(),100) }
+function openOrbit()  { var p=document.getElementById('orbit-popup'); p.style.display='flex'; orbitOpen=true; if(!orbitHistory.length) orbitAddBubble('axis','Enter Input'); setTimeout(()=>document.getElementById('orbit-input').focus(),100) }
 function closeOrbit() { document.getElementById('orbit-popup').style.display='none'; orbitOpen=false }
 
 function orbitAddBubble(who,text){
@@ -1430,11 +1430,41 @@ async function handleOrbitAction(action,data){
       res=await POST('/finance/outstanding',data)
       if(res?.success){toast(res.message||'Outstanding added');loadFinanceData()}
       break
+    case 'addRecurring':
+  res = await POST('/tasks/recurring', {
+    tag:        data.tag        || null,
+    value:      data.tag        || null,
+    task_name:  data.task_name  || data.name || null,
+    frequency:  data.frequency  || 'weekly',
+    day:        data.day        || null,
+    start_time: data.start_time || null,
+    end_time:   data.end_time   || null,
+    start_date: data.start_date || null,
+    end_date:   data.end_date   || null
+  })
+  if (res?.success) { toast('Recurring event added'); loadData(true) }
+  else toast('Error: ' + res?.error)
+  break
     case 'settleOutstanding':
       var item=(finState.data?.outstanding||[]).find(i=>i.person.toLowerCase().includes((data.person||'').toLowerCase())&&!i.settled)
       if(item){res=await POST('/finance/outstanding/'+item.id+'/settle');if(res?.success){toast(res.message||'Settled');loadFinanceData()}}
       else orbitAddBubble('axis',"Could not find that outstanding item.")
       break
+      case 'addRecurring':
+  res = await POST('/tasks/recurring', {
+    tag:        data.tag        || null,
+    value:      data.tag        || null,
+    task_name:  data.task_name  || data.name || null,
+    frequency:  data.frequency  || 'weekly',
+    day:        data.day        || null,
+    start_time: data.start_time || null,
+    end_time:   data.end_time   || null,
+    start_date: data.start_date || null,
+    end_date:   data.end_date   || null
+  })
+  if (res?.success) { toast('Recurring event added'); loadData(true) }
+  else toast('Error: ' + res?.error)
+  break
   }
 }
 
