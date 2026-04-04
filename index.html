@@ -368,10 +368,14 @@ nav{flex:1;}
           <div id="outstanding-credit-list"></div>
           <div style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;margin-top:14px;">Debt</div>
           <div id="outstanding-debt-list"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
-            <div style="background:var(--cream2);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;color:var(--brown4);">Credit</span><span style="font-size:13px;font-weight:500;color:var(--green);" id="outstanding-credit-total">+0</span></div>
-            <div style="background:var(--cream2);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;color:var(--brown4);">Debt</span><span style="font-size:13px;font-weight:500;color:var(--red);" id="outstanding-debt-total">−0</span></div>
-          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+  <div style="background:var(--cream2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--brown4);margin-bottom:8px;">Debit</div><div id="fin-debit-breakdown"></div></div>
+  <div style="background:var(--cream2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--brown4);margin-bottom:8px;">Credit</div><div id="fin-credit-breakdown"></div></div>
+</div>
+<div id="fin-special-breakdown" style="display:none;background:var(--cream2);border-radius:8px;padding:10px 12px;margin-bottom:14px;">
+  <div style="font-size:10px;color:var(--brown4);margin-bottom:8px;">Transfers & Adjustments</div>
+  <div id="fin-special-list"></div>
+</div>
         </div>
       </div>
 
@@ -1144,11 +1148,19 @@ function getCatInfo(catId,subId){
 
 function renderMonthlySummary(){
   var txs=getMonthTxs(),totalCredit=0,totalDebit=0,debitByCat={},creditByCat={}
-  txs.forEach(function(tx){
-    var c=finConvert(tx.amount,tx.currency)
-    if(tx.type==='credit'){totalCredit+=c;creditByCat[tx.category]=(creditByCat[tx.category]||0)+c}
-    else if(tx.type==='debit'){totalDebit+=c;debitByCat[tx.category]=(debitByCat[tx.category]||0)+c}
-  })
+  var specialTotal=0, specialByCat={}
+txs.forEach(function(tx){
+  var c=finConvert(tx.amount,tx.currency)
+  var isSpecial = tx.category==='finance' || tx.type==='transfer'
+  if(isSpecial){
+    specialByCat[tx.subcategory||tx.category]=(specialByCat[tx.subcategory||tx.category]||0)+c
+    specialTotal+=c
+  } else if(tx.type==='credit'){
+    totalCredit+=c; creditByCat[tx.category]=(creditByCat[tx.category]||0)+c
+  } else if(tx.type==='debit'){
+    totalDebit+=c; debitByCat[tx.category]=(debitByCat[tx.category]||0)+c
+  }
+})
   var net=totalCredit-totalDebit
   document.getElementById('fin-total-credit').textContent='+'+finFmt(totalCredit)
   document.getElementById('fin-total-debit').textContent='−'+finFmt(totalDebit)
@@ -1159,6 +1171,19 @@ function renderMonthlySummary(){
     document.getElementById(elId).innerHTML=html||'<div style="font-size:11px;color:var(--brown4);">None</div>'
   }
   renderBreakdown(debitByCat,'fin-debit-breakdown'); renderBreakdown(creditByCat,'fin-credit-breakdown')
+  var specialEl=document.getElementById('fin-special-breakdown')
+var specialList=document.getElementById('fin-special-list')
+if(Object.keys(specialByCat).length){
+  var sHtml=''
+  Object.keys(specialByCat).forEach(function(k){
+    var info=getCatInfo('finance',k)
+    sHtml+='<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;"><div style="width:7px;height:7px;border-radius:50%;background:'+info.color+';flex-shrink:0;"></div><span style="font-size:12px;color:var(--brown3);flex:1;">'+esc(info.label||k)+'</span><span style="font-size:12px;font-weight:500;color:var(--brown);">'+finFmt(specialByCat[k])+'</span></div>'
+  })
+  specialList.innerHTML=sHtml
+  specialEl.style.display='block'
+} else {
+  specialEl.style.display='none'
+}
 }
 
 function renderTransactions(){
@@ -1367,7 +1392,7 @@ async function deleteOutstanding(){
 // ════════════════════════════════════════════════════════════
 var orbitHistory=[], orbitOpen=false
 
-function openOrbit()  { var p=document.getElementById('orbit-popup'); p.style.display='flex'; orbitOpen=true; if(!orbitHistory.length) orbitAddBubble('axis','Enter Input'); setTimeout(()=>document.getElementById('orbit-input').focus(),100) }
+function openOrbit()  { var p=document.getElementById('orbit-popup'); p.style.display='flex'; orbitOpen=true; if(!orbitHistory.length) orbitAddBubble('axis','Awaiting Input...'); setTimeout(()=>document.getElementById('orbit-input').focus(),100) }
 function closeOrbit() { document.getElementById('orbit-popup').style.display='none'; orbitOpen=false }
 
 function orbitAddBubble(who,text){
