@@ -1672,7 +1672,18 @@ async function handleOrbitAction(action, data) {
       res = await POST('/tasks', data)
       if (res?.success) { toast('Task added'); loadData(true) }
       break
-
+case 'reviewTask':
+  // Orbit reviewed the task — just save it directly
+  res = await POST('/tasks', {
+    name:     data.name     || data.taskName,
+    due_date: data.due_date || data.dueDateStr || null,
+    due_time: data.due_time || data.startTime  || null,
+    tag:      data.tag      || null,
+    note:     data.note     || null
+  })
+  if (res?.success) { toast('Task added'); loadData(true) }
+  else toast('Error: ' + res?.error)
+  break
     case 'addTrackerEvent':
       // Tracker events are stored as tasks with a time
       res = await POST('/tasks', {
@@ -1722,18 +1733,7 @@ async function handleOrbitAction(action, data) {
       } else {
         orbitAddBubble('axis', "Couldn't find that outstanding item.")
       }
-      case 'reviewTask':
-  // Orbit reviewed the task — just save it directly
-  res = await POST('/tasks', {
-    name:     data.name     || data.taskName,
-    due_date: data.due_date || data.dueDateStr || null,
-    due_time: data.due_time || data.startTime  || null,
-    tag:      data.tag      || null,
-    note:     data.note     || null
-  })
-  if (res?.success) { toast('Task added'); loadData(true) }
-  else toast('Error: ' + res?.error)
-  break
+      
   }
 }
 
