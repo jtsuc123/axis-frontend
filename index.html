@@ -784,7 +784,8 @@ async function loadData(silent) {
       trash:     [],
       tagKey:    {}
     }
-    ;(state.data.recurring||[]).forEach(r => { if(r.tag && r.task_name) state.data.tagKey[r.tag]=r.task_name })
+    // Don't overwrite tag names with task names
+;(state.data.recurring||[]).forEach(r => { if(r.tag && !TAG_NAMES[r.tag]) state.data.tagKey[r.tag]=r.tag })
     saveCache(state.data)
     document.getElementById('offline-banner').style.display='none'
     var now=new Date(); document.getElementById('last-updated').textContent='Updated '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')
@@ -1094,7 +1095,7 @@ function renderCurrencyToggle(){
 function switchFinCurrency(cur){finState.displayCurrency=cur;renderFinanceAll()}
 
 function openAddCurrencyModal(){
-  var cur=prompt('Add currency code (e.g. AUD, SGD, KRW):')
+  var cur=prompt('Supported currencies:\nAUD, CAD, CHF, CNY, HKD, IDR, INR, KRW, MYR, NZD, PHP, SGD, THB, VND\n\nEnter currency code:')
   if(!cur) return; cur=cur.trim().toUpperCase(); if(!cur) return
   toast('Adding '+cur+'...')
   GET('/finance/fx').then(function(res){
