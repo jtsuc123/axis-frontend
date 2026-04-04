@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Axis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<style>
+:root{--cream:#faf7f2;--cream2:#f2ebe0;--cream3:#e8ddd0;--brown:#3d342a;--brown2:#6b5c4e;--brown3:#9a8f80;--brown4:#c4b8a8;--brown5:#ede5d8;--red:#D85A30;--red-bg:#FAECE7;--amber:#BA7517;--amber-bg:#FAEEDA;--blue:#185FA5;--blue-bg:#E6F1FB;--green:#0F6E56;--green-bg:#E1F5EE;--pink:#993556;--pink-bg:#FBEAF0;--purple:#534AB7;--purple-bg:#EEEDFE;--sidebar-w:200px;--radius:12px;--shadow:0 1px 3px rgba(61,52,42,0.08);}
+[data-theme="dark"]{--cream:#1e1a16;--cream2:#272219;--cream3:#332b22;--brown:#f0e8da;--brown2:#c9b89e;--brown3:#8a7a6a;--brown4:#5a4a3a;--brown5:#3a3028;--red-bg:#3d1a10;--amber-bg:#3a2800;--blue-bg:#0a1f3a;--green-bg:#0a2a1e;--pink-bg:#2d0f1e;--purple-bg:#1a1830;--shadow:0 1px 3px rgba(0,0,0,0.3);}
+*{box-sizing:border-box;margin:0;padding:0;}html,body{height:100%;}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--brown);font-size:14px;line-height:1.5;transition:background 0.2s,color 0.2s;}
+#auth-overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(61,52,42,0.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;}
+#auth-overlay *{cursor:auto;}.token-grid{cursor:none !important;}.token-grid *{cursor:none !important;}
+#auth-overlay.show{display:flex;}
+.auth-card{background:rgba(250,247,242,0.96);border-radius:20px;padding:36px 32px;width:100%;max-width:340px;box-shadow:0 8px 48px rgba(61,52,42,0.3);border:1px solid rgba(255,255,255,0.7);animation:authIn 0.25s ease;}
+[data-theme="dark"] .auth-card{background:rgba(30,26,22,0.97);border:1px solid rgba(51,43,34,0.8);}
+@keyframes authIn{from{opacity:0;transform:translateY(12px) scale(0.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+.auth-badge{display:inline-flex;align-items:center;gap:7px;background:var(--brown);border-radius:20px;padding:5px 14px;margin-bottom:18px;}
+.auth-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--cream3);}
+.auth-badge-text{font-size:10px;color:var(--cream);letter-spacing:0.08em;font-weight:500;}
+.auth-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--brown);margin-bottom:4px;}
+.auth-subtitle{font-size:12px;color:var(--brown3);margin-bottom:8px;}
+.auth-label{font-size:10px;color:var(--brown4);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:12px;font-weight:500;}
+.token-grid{position:relative;width:100%;height:180px;margin-bottom:24px;overflow:hidden;border-radius:12px;}
+.token-btn{position:absolute;background:rgba(255,255,255,0.85);border:1px solid var(--cream3);border-radius:20px;padding:8px 16px;font-size:13px;color:var(--brown);cursor:none;font-family:'DM Serif Display',serif;letter-spacing:0.01em;white-space:nowrap;transition:background 0.12s,border-color 0.12s;user-select:none;}
+[data-theme="dark"] .token-btn{background:rgba(39,34,25,0.9);border-color:rgba(51,43,34,0.6);}
+.token-btn:hover{filter:blur(2px);opacity:0.6;}
+.auth-card-blur{filter:blur(3px);transition:filter 0.1s;}
+.auth-footer{text-align:center;font-size:11px;color:var(--brown4);}
+.auth-footer a{color:var(--blue);cursor:pointer;text-decoration:none;}
+.auth-footer a:hover{text-decoration:underline;}
+.auth-attempts{font-size:11px;color:var(--red);text-align:center;margin-bottom:12px;min-height:16px;}
+#reset-screen{display:none;}
+#reset-screen.show{display:block;}
+#token-screen.hidden{display:none;}
+.reset-input{width:100%;padding:10px 14px;background:var(--cream2);border:1px solid var(--cream3);border-radius:10px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:15px;text-align:center;letter-spacing:0.15em;outline:none;margin-bottom:12px;}
+.reset-btn{width:100%;padding:11px;background:var(--brown);color:var(--cream);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;margin-bottom:10px;}
+.reset-btn:hover{background:var(--brown2);}
+.reset-back{display:block;text-align:center;font-size:12px;color:var(--brown3);cursor:pointer;margin-top:4px;}
+#app{display:none;height:100vh;flex-direction:column;}
+#app.unlocked{display:flex;}
+#offline-banner{display:none;background:var(--amber-bg);color:var(--amber);font-size:12px;text-align:center;padding:4px;border-bottom:1px solid var(--cream3);}
+#layout{display:flex;flex:1;min-height:0;overflow-y:auto;}
+#sidebar{width:var(--sidebar-w);background:var(--cream2);border-right:1px solid var(--cream3);display:flex;flex-direction:column;padding:20px 14px;flex-shrink:0;transition:transform 0.25s ease;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar-name{font-family:'DM Serif Display',serif;font-size:18px;color:var(--brown);margin-bottom:2px;}
+.sidebar-date{font-size:11px;color:var(--brown4);}
+nav{flex:1;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;font-size:13px;color:var(--brown3);cursor:pointer;margin-bottom:2px;transition:background 0.12s,color 0.12s;user-select:none;}
+.nav-item:hover{background:var(--cream);color:var(--brown);}
+.nav-item.active{background:var(--cream);color:var(--brown);font-weight:500;}
+.nav-dot{width:8px;height:8px;border-radius:50%;background:var(--brown4);flex-shrink:0;transition:background 0.12s;}
+.nav-item.active .nav-dot,.nav-item:hover .nav-dot{background:var(--brown);}
+.sidebar-bottom{margin-top:auto;display:flex;flex-direction:column;gap:6px;}
+.icon-btn{background:none;border:none;cursor:pointer;color:var(--brown3);font-size:13px;padding:6px 10px;border-radius:8px;text-align:left;display:flex;align-items:center;gap:8px;transition:background 0.12s,color 0.12s;font-family:'DM Sans',sans-serif;}
+.icon-btn:hover{background:var(--cream);color:var(--brown);}
+#main{flex:1;padding:36px 36px 24px 28px;min-width:0;box-sizing:border-box;}
+.view{display:none;width:100%;min-width:0;box-sizing:border-box;}
+.view.active{display:block;padding-top:8px;}
+.section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-top:4px;}
+.cal-nav-btn{background:var(--cream2);border:1px solid var(--cream3);color:var(--brown);padding:5px 12px;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;transition:background 0.12s;}
+.cal-nav-btn:hover{background:var(--cream3);}
+.section-hd h2{font-family:'DM Serif Display',serif;font-size:22px;color:var(--brown);font-weight:400;}
+.section-label{font-size:10px;font-weight:500;letter-spacing:0.08em;color:var(--brown4);text-transform:uppercase;margin-bottom:8px;}
+.metrics{display:flex;gap:10px;flex-wrap:wrap;}
+.metric{flex:1;min-width:140px;background:var(--cream2);border-radius:var(--radius);padding:12px 14px;border:1px solid var(--cream3);display:flex;align-items:center;gap:12px;}
+.metric-circle{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;flex-shrink:0;}
+.metric-label{font-size:10px;color:var(--brown4);margin-bottom:1px;}
+.metric-val{font-size:20px;font-weight:500;line-height:1;}
+.task-group{margin-bottom:16px;}
+.task-card{background:var(--cream);border:1px solid var(--cream3);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:6px;cursor:pointer;transition:border-color 0.12s,box-shadow 0.12s;}
+.task-card:hover{border-color:var(--brown4);box-shadow:var(--shadow);}
+.task-icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.task-icon-inner{width:9px;height:9px;border-radius:50%;}
+.task-info{flex:1;min-width:0;}
+.task-name{font-size:13px;font-weight:500;color:var(--brown);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.task-name.done{text-decoration:line-through;color:var(--brown4);}
+.task-meta{font-size:11px;color:var(--brown4);margin-top:1px;}
+.task-tag{font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;flex-shrink:0;}
+.task-actions{display:flex;gap:4px;opacity:0;transition:opacity 0.15s;}
+.task-card:hover .task-actions{opacity:1;}
+.task-action-btn{background:none;border:none;cursor:pointer;color:var(--brown4);font-size:14px;padding:3px 5px;border-radius:5px;transition:background 0.1s,color 0.1s;font-family:'DM Sans',sans-serif;}
+.task-action-btn:hover{background:var(--cream2);color:var(--brown);}
+.note-pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;background:var(--amber-bg);color:var(--amber);flex-shrink:0;white-space:nowrap;}
+.note-dot{width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;}
+.note-pill-dark{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;background:rgba(186,117,23,0.2);color:#EF9F27;flex-shrink:0;}
+.note-dot-dark{width:5px;height:5px;border-radius:50%;background:#EF9F27;flex-shrink:0;}
+.agenda-today-card{background:#2a1f14;border-radius:14px;padding:16px;margin-bottom:10px;}
+.agenda-day-card{background:var(--cream);border:1px solid var(--cream3);border-radius:10px;padding:12px 16px;margin-bottom:8px;}
+.agenda-day-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.agenda-day-title{font-size:10px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;}
+.agenda-event-row{display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:0.5px solid var(--cream3);}
+.agenda-event-row:last-child{border-bottom:none;}
+.agenda-time{font-size:10px;flex-shrink:0;font-variant-numeric:tabular-nums;}
+.agenda-block{font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;flex-shrink:0;}
+.agenda-note{font-size:11px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.agenda-empty{font-size:11px;opacity:0.4;padding:4px 0;}
+.trash-card{background:var(--cream);border:1px solid var(--cream3);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.trash-name{font-size:13px;color:var(--brown2);flex:1;text-decoration:line-through;}
+.trash-meta{font-size:11px;color:var(--brown4);}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(30,22,14,0.45);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--cream);border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border:1px solid var(--cream3);}
+.modal h3{font-family:'DM Serif Display',serif;font-size:20px;margin-bottom:18px;color:var(--brown);}
+.form-group{margin-bottom:14px;}
+.form-label{font-size:11px;font-weight:500;color:var(--brown4);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;display:block;}
+.form-input,.form-select,.form-textarea{width:100%;padding:9px 12px;background:var(--cream2);border:1px solid var(--cream3);border-radius:8px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--brown3);}
+.form-textarea{resize:vertical;min-height:70px;}
+.form-row{display:flex;gap:10px;}
+.form-row .form-group{flex:1;}
+.form-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--brown2);cursor:pointer;margin-bottom:14px;}
+.toggle-switch{width:36px;height:20px;border-radius:10px;background:var(--cream3);position:relative;transition:background 0.2s;flex-shrink:0;}
+.toggle-switch.on{background:var(--brown);}
+.toggle-knob{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:white;transition:transform 0.2s;}
+.toggle-switch.on .toggle-knob{transform:translateX(16px);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+.btn{padding:9px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:background 0.12s;}
+.btn-primary{background:var(--brown);color:var(--cream);}
+.btn-primary:hover{background:var(--brown2);}
+.btn-secondary{background:var(--cream2);color:var(--brown);border:1px solid var(--cream3);}
+.btn-secondary:hover{background:var(--cream3);}
+.btn-danger{background:var(--red-bg);color:var(--red);}
+.btn-danger:hover{background:#f5c4b3;}
+#loading{position:fixed;inset:0;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;}
+.spinner{width:32px;height:32px;border-radius:50%;border:2px solid var(--cream3);border-top-color:var(--brown);animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--cream2);border-top:1px solid var(--cream3);padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:50;}
+.mobile-nav-tabs{display:flex;overflow-x:auto;padding:0 12px;gap:4px;scrollbar-width:none;}
+.mobile-nav-tabs::-webkit-scrollbar{display:none;}
+.mobile-tab{flex-shrink:0;padding:6px 16px;border-radius:20px;font-size:13px;color:var(--brown3);cursor:pointer;transition:background 0.12s,color 0.12s;white-space:nowrap;font-family:'DM Sans',sans-serif;}
+.mobile-tab.active{background:var(--brown);color:var(--cream);font-weight:500;}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(30,22,14,0.35);z-index:140;}
+.nlp-chat-bubble-axis{background:var(--brown);border-radius:12px 12px 4px 12px;padding:9px 12px;font-size:12px;color:var(--cream);align-self:flex-start;max-width:85%;line-height:1.5;}
+.nlp-chat-bubble-user{background:var(--cream2);border-radius:12px 12px 12px 4px;padding:9px 12px;font-size:12px;color:var(--brown);align-self:flex-end;max-width:85%;border:1px solid var(--cream3);}
+.nlp-field-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--cream3);}
+.nlp-field-row:last-child{border-bottom:none;}
+.nlp-field-label{font-size:10px;color:var(--brown4);width:64px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.04em;}
+.nlp-field-val{font-size:13px;color:var(--brown);font-weight:500;flex:1;}
+.nlp-field-edit{font-size:10px;color:var(--blue);cursor:pointer;flex-shrink:0;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--brown4);}
+.empty-state p{font-size:14px;}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--brown);color:var(--cream);padding:10px 20px;border-radius:20px;font-size:13px;opacity:0;transition:opacity 0.2s;z-index:300;white-space:nowrap;pointer-events:none;}
+#toast.show{opacity:1;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--cream3);border-radius:3px;}
+#fab{position:fixed;bottom:100px;right:24px;width:48px;height:48px;border-radius:50%;background:var(--brown);color:var(--cream);border:none;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(61,52,42,0.25);z-index:100;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;transition:background 0.12s,transform 0.1s;}
+#fab:hover{background:var(--brown2);transform:scale(1.06);}
+@media(max-width:768px){
+  #sidebar{position:fixed;top:0;left:0;bottom:0;z-index:145;transform:translateX(-100%);width:220px;}
+  #sidebar.open{transform:translateX(0);}
+  #sidebar-overlay.open{display:block;}
+  #mobile-nav{display:block;}
+  #main{padding:16px;padding-bottom:80px;padding-top:56px;}
+  .metrics{flex-wrap:wrap;}
+  .metric{min-width:calc(50% - 5px);}
+  #fab{bottom:76px;right:16px;}
+}
+@media(min-width:769px) and (max-width:1024px){:root{--sidebar-w:160px;}}
+@media(min-width:769px) and (max-width:900px){:root{--sidebar-w:140px;}#main{padding:20px 18px;}}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+    <div style="width:48px;height:48px;border-radius:12px;background:#1e1a16;display:flex;align-items:center;justify-content:center;">
+      <svg width="28" height="28" viewBox="0 0 52 52" fill="none"><path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="#BA7517" stroke-width="1.5" fill="none" stroke-linejoin="round"/><path d="M26 14 L28 22 L36 26 L28 30 L26 38 L24 30 L16 26 L24 22 Z" fill="#BA7517" opacity="0.2"/><circle cx="26" cy="26" r="3" fill="#BA7517"/></svg>
+    </div>
+    <h1 style="font-family:'DM Serif Display',serif;font-size:36px;color:var(--brown);">Axis</h1>
+  </div>
+  <div class="spinner"></div>
+</div>
+
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div id="token-screen">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="display:inline-block;margin-bottom:14px;"><div class="auth-badge"><div class="auth-badge-dot"></div><span class="auth-badge-text">AXIS SECURE</span></div></div>
+        <div class="auth-title" id="auth-greeting">Salutations</div>
+        <div class="auth-subtitle">Authenticate with your token</div>
+        <div style="font-size:11px;color:var(--brown4);margin-bottom:20px;" id="auth-datetime"></div>
+      </div>
+      <div class="auth-label" style="text-align:center;">Select token for authentication</div>
+      <div class="token-grid" id="token-grid"></div>
+      <div class="auth-attempts" id="auth-attempts"></div>
+      <div class="auth-footer">Forgot your token? <a onclick="showResetScreen()">Send reset code →</a></div>
+    </div>
+    <div id="reset-screen">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="display:inline-block;margin-bottom:14px;"><div class="auth-badge"><div class="auth-badge-dot"></div><span class="auth-badge-text">AXIS SECURE</span></div></div>
+        <div class="auth-title">Reset token</div>
+        <div class="auth-subtitle" id="reset-subtitle">Click below to send a code to your email</div>
+      </div>
+      <input type="text" class="reset-input" id="reset-code-input" placeholder="000000" maxlength="6">
+      <button class="reset-btn" onclick="verifyResetCode()">Verify code</button>
+      <button class="reset-btn" onclick="sendResetCode()" style="background:var(--cream2);color:var(--brown);border:1px solid var(--cream3);">Send code to email</button>
+      <a class="reset-back" onclick="showTokenScreen()">← Back to token</a>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="offline-banner">● Offline — showing last synced data</div>
+  <button id="menu-toggle" style="display:none;position:fixed;top:14px;left:14px;background:var(--cream2);border:1px solid var(--cream3);border-radius:8px;width:36px;height:36px;align-items:center;justify-content:center;cursor:pointer;z-index:150;flex-direction:column;gap:4px;">
+    <div style="width:16px;height:1.5px;background:var(--brown);border-radius:2px;"></div>
+    <div style="width:16px;height:1.5px;background:var(--brown);border-radius:2px;"></div>
+    <div style="width:16px;height:1.5px;background:var(--brown);border-radius:2px;"></div>
+  </button>
+  <div id="sidebar-overlay"></div>
+  <div id="layout">
+    <div id="sidebar">
+      <div style="margin-bottom:28px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <div style="width:36px;height:36px;border-radius:10px;background:#1e1a16;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="22" height="22" viewBox="0 0 52 52" fill="none"><path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="#BA7517" stroke-width="1.5" fill="none" stroke-linejoin="round"/><path d="M26 14 L28 22 L36 26 L28 30 L26 38 L24 30 L16 26 L24 22 Z" fill="#BA7517" opacity="0.2"/><circle cx="26" cy="26" r="3" fill="#BA7517"/></svg>
+          </div>
+          <div class="sidebar-name">Axis</div>
+        </div>
+        <div class="sidebar-date" id="sidebar-date"></div>
+      </div>
+      <nav>
+        <div class="nav-item" data-view="overview"><div class="nav-dot"></div>Overview</div>
+        <div class="nav-item active" data-view="calendar"><div class="nav-dot"></div>Calendar</div>
+        <div class="nav-item" data-view="whiteboard"><div class="nav-dot"></div>Whiteboard</div>
+        <div class="nav-item" data-view="finance"><div class="nav-dot"></div>Finance</div>
+        <div class="nav-item" data-view="passwords"><div class="nav-dot"></div>Passwords</div>
+        <div class="nav-item" data-view="trash"><div class="nav-dot"></div>Trash</div>
+      </nav>
+      <div class="nav-item" id="orbit-nav-btn" style="margin-top:12px;background:var(--brown);color:var(--cream) !important;border-radius:8px;display:flex;align-items:center;gap:8px;">
+        <svg width="12" height="12" viewBox="0 0 52 52" fill="none"><path d="M26 8 L29 21 L42 26 L29 31 L26 44 L23 31 L10 26 L23 21 Z" stroke="#BA7517" stroke-width="2.5" fill="none" stroke-linejoin="round"/><circle cx="26" cy="26" r="3.5" fill="#BA7517"/></svg>
+        <span>Orbit</span>
+      </div>
+      <div class="sidebar-bottom">
+        <button class="icon-btn" id="theme-toggle">☾ Dark mode</button>
+        <button class="icon-btn" id="refresh-btn">↺ Refresh</button>
+        <div style="font-size:10px;color:var(--brown4);padding:4px 10px;" id="last-updated"></div>
+      </div>
+    </div>
+
+    <div id="main">
+      <!-- OVERVIEW -->
+      <div class="view" id="view-overview">
+        <div class="section-hd">
+          <div>
+            <h2 id="greeting" style="margin-bottom:2px;">Overview</h2>
+            <div id="overview-date" style="font-size:12px;color:var(--brown4);"></div>
+            <div id="overview-day" style="font-size:11px;color:var(--brown4);margin-top:1px;letter-spacing:0.05em;"></div>
+          </div>
+          <button class="btn btn-primary" onclick="openAddModal()" style="font-size:12px;padding:6px 14px;">+ Task</button>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="metric-circle" style="background:var(--red-bg);"><span style="font-size:18px;color:var(--red);">!</span></div><div><div class="metric-label">Past due</div><div class="metric-val" style="color:var(--red);" id="m-pastdue">0</div></div></div>
+          <div class="metric"><div class="metric-circle" style="background:var(--amber-bg);"><span style="font-size:16px;color:var(--amber);">◷</span></div><div><div class="metric-label">Today</div><div class="metric-val" style="color:var(--amber);" id="m-today">0</div></div></div>
+          <div class="metric"><div class="metric-circle" style="background:var(--blue-bg);"><span style="font-size:16px;color:var(--blue);">▦</span></div><div><div class="metric-label">This week</div><div class="metric-val" style="color:var(--blue);" id="m-week">0</div></div></div>
+        </div>
+        <div id="overview-tasks" style="margin-top:20px;"></div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div class="view active" id="view-calendar">
+        <div class="section-hd"><h2>Calendar</h2></div>
+        <div style="display:flex;gap:6px;margin-bottom:16px;">
+          <button class="cal-nav-btn" id="cal-prev">← Earlier</button>
+          <button class="cal-nav-btn" id="cal-today-btn">Today</button>
+          <button class="cal-nav-btn" id="cal-next">Later →</button>
+        </div>
+        <div id="agenda-grid"></div>
+      </div>
+
+      <!-- WHITEBOARD -->
+      <div class="view" id="view-whiteboard">
+        <div class="section-hd"><h2>Whiteboard</h2><span style="font-size:11px;color:var(--brown4);">Auto-saved</span></div>
+        <div style="background:var(--cream2);border:1px solid var(--cream3);border-radius:10px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button id="wb-mode-draw" class="btn btn-primary" style="padding:5px 14px;font-size:12px;">✏ Draw</button>
+            <button id="wb-mode-text" class="btn btn-secondary" style="padding:5px 14px;font-size:12px;">T Text</button>
+            <button id="wb-mode-erase" class="btn btn-secondary" style="padding:5px 14px;font-size:12px;">◻ Erase</button>
+          </div>
+          <div style="width:1px;height:20px;background:var(--cream3);flex-shrink:0;"></div>
+          <div id="wb-color-picker" style="display:flex;gap:5px;align-items:center;">
+            <div class="wb-color" data-color="#3d342a" style="background:#3d342a;width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid var(--brown3);flex-shrink:0;"></div>
+            <div class="wb-color" data-color="#D85A30" style="background:#D85A30;width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;"></div>
+            <div class="wb-color" data-color="#185FA5" style="background:#185FA5;width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;"></div>
+            <div class="wb-color" data-color="#0F6E56" style="background:#0F6E56;width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;"></div>
+            <div class="wb-color" data-color="#BA7517" style="background:#BA7517;width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;"></div>
+            <div class="wb-color" data-color="#534AB7" style="background:#534AB7;width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;"></div>
+            <div class="wb-color" data-color="#993556" style="background:#993556;width:18px;height:18px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0;"></div>
+            <input type="color" id="wb-custom-color" value="#3d342a" style="width:18px;height:18px;border-radius:50%;cursor:pointer;border:1px solid var(--cream3);padding:0;background:none;flex-shrink:0;">
+          </div>
+          <div style="width:1px;height:20px;background:var(--cream3);flex-shrink:0;"></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="wb-draw-size" style="padding:4px 8px;background:var(--cream);border:1px solid var(--cream3);border-radius:6px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;"><option value="1">1px</option><option value="2">2px</option><option value="4" selected>4px</option><option value="8">8px</option><option value="16">16px</option></select>
+            <select id="wb-erase-size" style="padding:4px 8px;background:var(--cream);border:1px solid var(--cream3);border-radius:6px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;"><option value="10">S</option><option value="30" selected>M</option><option value="60">L</option><option value="100">XL</option></select>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+            <button id="wb-zoom-out" style="background:var(--cream2);border:1px solid var(--cream3);border-radius:6px;padding:4px 10px;font-size:14px;cursor:pointer;color:var(--brown);font-family:'DM Sans',sans-serif;">−</button>
+            <span id="wb-zoom-label" style="font-size:11px;color:var(--brown4);min-width:34px;text-align:center;">100%</span>
+            <button id="wb-zoom-in" style="background:var(--cream2);border:1px solid var(--cream3);border-radius:6px;padding:4px 10px;font-size:14px;cursor:pointer;color:var(--brown);font-family:'DM Sans',sans-serif;">+</button>
+            <button id="wb-clear" class="btn btn-danger" style="padding:5px 14px;font-size:12px;">Clear</button>
+          </div>
+        </div>
+        <canvas id="wb-canvas" style="display:none;"></canvas>
+        <input type="text" id="wb-text-input" placeholder="Type here, then click canvas to place..." style="display:none;width:100%;padding:8px 12px;background:var(--cream2);border:1px solid var(--cream3);border-radius:8px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;margin-top:8px;">
+      </div>
+
+      <!-- FINANCE -->
+      <div class="view" id="view-finance">
+        <div class="section-hd">
+          <h2>Finance</h2>
+          <button class="btn btn-primary" onclick="openFinanceTxModal()" style="font-size:12px;padding:6px 14px;">+ Transaction</button>
+        </div>
+
+        <div style="background:var(--cream);border:1px solid var(--cream3);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.08em;text-transform:uppercase;">Balances</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div id="fx-rate-badge" style="font-size:10px;color:var(--green);border:1px solid var(--cream3);padding:2px 8px;border-radius:20px;display:flex;align-items:center;gap:4px;">
+                <div style="width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
+                <span id="fx-rate-label">Loading rate...</span>
+              </div>
+              <div style="display:flex;gap:3px;" id="cur-toggle"></div>
+              <button onclick="openAddCurrencyModal()" style="font-size:11px;padding:2px 9px;border-radius:20px;border:1px solid var(--cream3);background:none;color:var(--brown4);cursor:pointer;font-family:'DM Sans',sans-serif;">+</button>
+            </div>
+          </div>
+          <div id="balance-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px;"></div>
+          <div style="background:var(--cream2);border-radius:8px;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;color:var(--brown4);">Net balance</span>
+            <span style="font-size:17px;font-weight:500;color:var(--brown);" id="net-balance-val">—</span>
+          </div>
+        </div>
+
+        <div style="background:var(--cream);border:1px solid var(--cream3);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;">
+          <div style="display:flex;gap:4px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;" id="finance-month-tabs"></div>
+          <div style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Summary</div>
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px;">
+            <div style="background:var(--cream2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--brown4);margin-bottom:3px;">Total credit</div><div style="font-size:16px;font-weight:500;color:var(--green);" id="fin-total-credit">—</div></div>
+            <div style="background:var(--cream2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--brown4);margin-bottom:3px;">Total debit</div><div style="font-size:16px;font-weight:500;color:var(--red);" id="fin-total-debit">—</div></div>
+            <div style="background:var(--cream2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--brown4);margin-bottom:3px;">Net difference</div><div style="font-size:16px;font-weight:500;" id="fin-net-diff">—</div></div>
+          </div>
+          <div style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Breakdown</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+            <div style="background:var(--cream2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--brown4);margin-bottom:8px;">Debit</div><div id="fin-debit-breakdown"></div></div>
+            <div style="background:var(--cream2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--brown4);margin-bottom:8px;">Credit</div><div id="fin-credit-breakdown"></div></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.08em;text-transform:uppercase;">Transactions</div>
+            <button onclick="openFinanceTxModal()" style="background:none;border:none;cursor:pointer;color:var(--brown4);font-size:18px;line-height:1;padding:0 2px;font-family:'DM Sans',sans-serif;">+</button>
+          </div>
+          <div style="display:grid;grid-template-columns:130px 1fr 110px;gap:8px;padding:5px 0;border-bottom:1px solid var(--cream3);margin-bottom:2px;">
+            <span style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.06em;text-transform:uppercase;">Date</span>
+            <span style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.06em;text-transform:uppercase;">Description</span>
+            <span style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.06em;text-transform:uppercase;text-align:right;">Amount</span>
+          </div>
+          <div id="fin-tx-list"></div>
+          <div id="fin-load-more" style="text-align:center;padding:10px 0 0;font-size:12px;color:var(--brown4);cursor:pointer;display:none;" onclick="finLoadMore()">Load more ↓</div>
+        </div>
+
+        <div style="background:var(--cream);border:1px solid var(--cream3);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="font-size:14px;font-weight:500;color:var(--brown);">Outstanding</div>
+            <button onclick="openOutstandingModal(null)" style="font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid var(--cream3);background:none;color:var(--brown4);cursor:pointer;font-family:'DM Sans',sans-serif;">+ Add</button>
+          </div>
+          <div style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;">Credit</div>
+          <div id="outstanding-credit-list"></div>
+          <div style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;margin-top:14px;">Debt</div>
+          <div id="outstanding-debt-list"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">
+            <div style="background:var(--cream2);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;color:var(--brown4);">Credit</span><span style="font-size:13px;font-weight:500;color:var(--green);" id="outstanding-credit-total">+0</span></div>
+            <div style="background:var(--cream2);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;color:var(--brown4);">Debt</span><span style="font-size:13px;font-weight:500;color:var(--red);" id="outstanding-debt-total">−0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PASSWORDS -->
+      <div class="view" id="view-passwords">
+        <div class="section-hd"><h2>Passwords</h2><button class="btn btn-primary" id="pw-add-btn" style="font-size:12px;padding:6px 14px;">+ Add</button></div>
+        <div style="position:relative;margin-bottom:16px;"><input type="text" id="pw-search" class="form-input" placeholder="Search..." style="padding-left:32px;"><span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--brown4);">⌕</span></div>
+        <div id="pw-list"></div>
+      </div>
+
+      <!-- TRASH -->
+      <div class="view" id="view-trash">
+        <div class="section-hd"><h2>Trash</h2><button class="btn btn-danger" id="empty-trash-btn">Empty trash</button></div>
+        <div style="font-size:12px;color:var(--brown4);margin-bottom:14px;">Items deleted within 7 days</div>
+        <div id="trash-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="fin-tx-modal">
+    <div class="modal" style="max-width:480px;">
+      <h3 id="fin-tx-modal-title">Add transaction</h3>
+      <div class="form-group"><label class="form-label">Description *</label><input type="text" class="form-input" id="fin-desc" placeholder="e.g. Banana, Dinner w/ Sophie"></div>
+      <div class="form-group"><label class="form-label">Location / Vendor</label><input type="text" class="form-input" id="fin-vendor" placeholder="e.g. 7-Eleven, Burger King"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount *</label><input type="number" class="form-input" id="fin-amount" placeholder="0" step="any"></div>
+        <div class="form-group"><label class="form-label">Type *</label><select class="form-select" id="fin-type" onchange="finTypeChanged()"><option value="debit">Debit (expense)</option><option value="credit">Credit (income)</option><option value="transfer">Transfer</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Account *</label><select class="form-select" id="fin-account"></select></div>
+        <div class="form-group" id="fin-to-account-group" style="display:none;"><label class="form-label">To account *</label><select class="form-select" id="fin-to-account"></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Date *</label><input type="date" class="form-input" id="fin-date"></div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <div id="fin-category-selector" style="border:1px solid var(--cream3);border-radius:8px;overflow:hidden;"></div>
+        <input type="hidden" id="fin-category-val">
+        <input type="hidden" id="fin-subcategory-val">
+      </div>
+      <div class="form-group"><label class="form-label">Currency</label><select class="form-select" id="fin-currency"><option value="NT$">NT$ (Taiwan Dollar)</option><option value="USD">USD (US Dollar)</option></select></div>
+      <div class="form-group"><label class="form-label">Ledger / Receipt no.</label><input type="text" class="form-input" id="fin-ledger" placeholder="e.g. YP-74518923"></div>
+      <div class="form-group"><label class="form-label">Note</label><textarea class="form-textarea" id="fin-note" placeholder="Optional note..." style="min-height:50px;"></textarea></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="document.getElementById('fin-tx-modal').classList.remove('open')">Cancel</button>
+        <button class="btn btn-danger" id="fin-tx-delete-btn" style="display:none;margin-right:auto;" onclick="deleteFinTx()">Delete</button>
+        <button class="btn btn-primary" onclick="saveFinTx()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="outstanding-modal">
+    <div class="modal" style="max-width:400px;">
+      <h3 id="outstanding-modal-title">Add outstanding</h3>
+      <div class="form-group"><label class="form-label">Person *</label><input type="text" class="form-input" id="out-person" placeholder="e.g. Dad, Sophie, Kyle"></div>
+      <div class="form-group"><label class="form-label">Note</label><input type="text" class="form-input" id="out-note" placeholder="e.g. Dinner split, Concert tickets"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Amount *</label><input type="number" class="form-input" id="out-amount" placeholder="0" step="any"></div>
+        <div class="form-group"><label class="form-label">Currency</label><select class="form-select" id="out-currency"><option value="NT$">NT$</option><option value="USD">USD</option></select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Type *</label><select class="form-select" id="out-type"><option value="credit">Credit</option><option value="debt">Debt</option></select></div>
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="out-date"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="document.getElementById('outstanding-modal').classList.remove('open')">Cancel</button>
+        <button class="btn btn-danger" id="out-delete-btn" style="display:none;margin-right:auto;" onclick="deleteOutstanding()">Delete</button>
+        <button id="out-settle-btn" style="display:none;margin-right:auto;background:var(--green-bg);color:var(--green);border:none;border-radius:8px;padding:9px 18px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;" onclick="settleOutstanding()">Mark settled</button>
+        <button class="btn btn-primary" onclick="saveOutstanding()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="pw-master-modal" style="z-index:300;">
+    <div class="modal" style="max-width:360px;">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div class="auth-badge" style="margin-bottom:12px;"><div class="auth-badge-dot"></div><span class="auth-badge-text">PASSWORDS</span></div>
+        <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--brown);" id="pw-master-title">Enter master password</div>
+        <div style="font-size:12px;color:var(--brown3);margin-top:4px;" id="pw-master-subtitle">Your passwords are encrypted with this key</div>
+      </div>
+      <div style="position:relative;margin-bottom:6px;">
+        <input type="password" class="form-input" id="pw-master-input" placeholder="Master password" style="padding-right:52px;" autocomplete="current-password">
+        <button onclick="toggleMasterVis()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--brown4);font-size:12px;font-family:'DM Sans',sans-serif;" id="pw-master-vis-btn">Show</button>
+      </div>
+      <div style="font-size:11px;color:var(--red);text-align:center;min-height:16px;margin-bottom:10px;" id="pw-master-error"></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="pwMasterAttempt()">Unlock</button>
+      <div style="text-align:center;margin-top:12px;"><a onclick="pwResetConfirm()" style="font-size:11px;color:var(--brown4);cursor:pointer;text-decoration:underline;">Forgot master password? Reset</a></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="pw-entry-modal">
+    <div class="modal" style="max-width:480px;">
+      <h3 id="pw-entry-title">Add entry</h3>
+      <div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="pw-site" placeholder="e.g. Gmail, Bank Account" autocomplete="off"></div>
+      <div class="form-group" style="position:relative;">
+        <label class="form-label">Category</label>
+        <input type="text" class="form-input" id="pw-category" placeholder="Type or select..." autocomplete="off" onfocus="pwCatDropdownShow()" oninput="pwCatDropdownFilter(this.value)" onblur="setTimeout(pwCatDropdownHide,150)">
+        <div id="pw-cat-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--cream);border:1px solid var(--cream3);border-radius:10px;box-shadow:0 4px 16px rgba(61,52,42,0.12);z-index:50;max-height:180px;overflow-y:auto;margin-top:2px;"></div>
+      </div>
+      <div class="form-group">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <label class="form-label" style="margin-bottom:0;">Content</label>
+          <button onclick="pwToggleTextLock()" id="pw-lock-btn" style="background:none;border:1px solid var(--cream3);border-radius:6px;padding:3px 10px;font-size:11px;color:var(--brown3);cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px;"><span id="pw-lock-icon">🔒</span><span id="pw-lock-label">Locked</span></button>
+        </div>
+        <textarea class="form-textarea" id="pw-notes" placeholder="Passwords, keys, notes..." style="min-height:160px;font-family:monospace;font-size:13px;resize:vertical;" readonly></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="pw-entry-cancel">Cancel</button>
+        <button class="btn btn-danger" id="pw-entry-delete" style="margin-right:auto;display:none;">Delete</button>
+        <button class="btn btn-primary" id="pw-entry-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="nlp-modal">
+    <div class="modal" style="max-width:400px;">
+      <div id="nlp-input-screen">
+        <div style="margin-bottom:14px;">
+          <div class="auth-badge" style="margin-bottom:10px;"><div class="auth-badge-dot"></div><span class="auth-badge-text">AXIS</span></div>
+          <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--brown);">What do you need to add?</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:200px;overflow-y:auto;" id="nlp-chat"></div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="form-input" id="nlp-input" placeholder="e.g. math hw due thurs 0800 [CLS]" style="flex:1;">
+          <button onclick="nlpSend()" style="background:var(--brown);color:var(--cream);border:none;border-radius:8px;padding:0 14px;font-size:18px;cursor:pointer;flex-shrink:0;">↑</button>
+        </div>
+        <div style="font-size:10px;color:var(--brown4);margin-top:8px;">Try: "gym every mon 0600-0700 until june" · "project due next fri"</div>
+      </div>
+      <div id="nlp-review-screen" style="display:none;">
+        <div style="margin-bottom:14px;">
+          <div class="auth-badge" style="margin-bottom:10px;"><div class="auth-badge-dot"></div><span class="auth-badge-text">REVIEW</span></div>
+          <div style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--brown);">Here's what I got</div>
+        </div>
+        <div id="nlp-summary-msg" style="background:var(--cream2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--brown2);margin-bottom:14px;line-height:1.5;"></div>
+        <div id="nlp-fields"></div>
+        <div id="nlp-ambiguities" style="display:none;background:var(--amber-bg);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--amber);margin-top:10px;"></div>
+        <div style="display:flex;gap:8px;margin-top:16px;">
+          <button class="btn btn-secondary" onclick="nlpBack()">← Retype</button>
+          <button class="btn btn-primary" style="flex:1;" onclick="nlpConfirm()">Confirm & save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="task-modal">
+    <div class="modal">
+      <h3 id="modal-title">Add task</h3>
+      <div class="form-group"><label class="form-label">Task name</label><input type="text" class="form-input" id="f-name" placeholder="What needs to be done?"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Due date</label><input type="date" class="form-input" id="f-date"></div>
+        <div class="form-group"><label class="form-label">Time (optional)</label><input type="time" class="form-input" id="f-time"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Tag</label><select class="form-select" id="f-tag"><option value="">No tag</option></select></div>
+      <div class="form-group"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="f-note" placeholder="Additional details..."></textarea></div>
+      <label class="form-toggle" id="recurring-toggle">
+        <div class="toggle-switch" id="recurring-switch"><div class="toggle-knob"></div></div>
+        <span>Recurring event</span>
+      </label>
+      <div id="recurring-fields" style="display:none;">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Frequency</label><select class="form-select" id="f-freq"><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option><option value="daily">Daily</option></select></div>
+          <div class="form-group"><label class="form-label">Day</label><select class="form-select" id="f-day"><option value="SUN">Sunday</option><option value="MON">Monday</option><option value="TUE">Tuesday</option><option value="WED">Wednesday</option><option value="THU">Thursday</option><option value="FRI">Friday</option><option value="SAT">Saturday</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Start time</label><input type="time" class="form-input" id="f-starttime"></div>
+          <div class="form-group"><label class="form-label">End time</label><input type="time" class="form-input" id="f-endtime"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Start date</label><input type="date" class="form-input" id="f-startdate"></div>
+          <div class="form-group"><label class="form-label">End date</label><input type="date" class="form-input" id="f-enddate"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Schedule block</label><input type="text" class="form-input" id="f-value" placeholder="e.g. MTG, GYM, VOL"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="modal-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="cell-modal">
+    <div class="modal">
+      <h3>Edit time slot</h3>
+      <div style="font-size:12px;color:var(--brown4);margin-bottom:16px;" id="cell-modal-meta"></div>
+      <div class="form-group"><label class="form-label">Tag</label><input type="text" class="form-input" id="c-value" placeholder="e.g. MTG, GYM"></div>
+      <div class="form-group"><label class="form-label">Note</label><textarea class="form-textarea" id="c-note" placeholder="Details, task names..."></textarea></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cell-cancel">Cancel</button>
+        <button class="btn btn-danger" id="cell-clear" style="margin-right:auto;">Clear cell</button>
+        <button class="btn btn-primary" id="cell-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mobile-nav">
+    <div class="mobile-nav-tabs">
+      <div class="mobile-tab" data-view="overview">Home</div>
+      <div class="mobile-tab active" data-view="calendar">Calendar</div>
+      <div class="mobile-tab" data-view="whiteboard">Board</div>
+      <div class="mobile-tab" data-view="finance">Finance</div>
+      <div class="mobile-tab" data-view="passwords">Passwords</div>
+      <div class="mobile-tab" data-view="trash">Trash</div>
+      <div class="mobile-tab" id="orbit-mobile-btn" style="background:var(--brown);color:var(--cream);">Orbit ✦</div>
+    </div>
+  </div>
+</div>
+
+<button id="fab">+</button>
+
+<div id="orbit-popup" style="display:none;position:fixed;bottom:80px;right:28px;width:320px;max-height:480px;background:var(--cream);border:1px solid var(--cream3);border-radius:16px;box-shadow:0 8px 32px rgba(61,52,42,0.18);z-index:250;flex-direction:column;overflow:hidden;">
+  <div style="padding:12px 16px;border-bottom:1px solid var(--cream3);display:flex;align-items:center;justify-content:space-between;background:#1e1a16;border-radius:16px 16px 0 0;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <svg width="14" height="14" viewBox="0 0 52 52" fill="none"><path d="M26 8 L29 21 L42 26 L29 31 L26 44 L23 31 L10 26 L23 21 Z" stroke="#BA7517" stroke-width="2" fill="none" stroke-linejoin="round"/><circle cx="26" cy="26" r="3.5" fill="#BA7517"/></svg>
+      <span style="font-size:11px;color:#faf7f2;letter-spacing:0.08em;font-weight:500;">ORBIT</span>
+    </div>
+    <button onclick="closeOrbit()" style="background:none;border:none;color:#faf7f2;font-size:18px;cursor:pointer;padding:0 2px;line-height:1;">×</button>
+  </div>
+  <div id="orbit-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:200px;max-height:340px;"></div>
+  <div style="padding:10px 12px;border-top:1px solid var(--cream3);display:flex;gap:8px;">
+    <input type="text" id="orbit-input" placeholder="Ask Orbit..." style="flex:1;padding:8px 12px;background:var(--cream2);border:1px solid var(--cream3);border-radius:8px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+    <button onclick="orbitSend()" style="background:#1e1a16;color:#faf7f2;border:none;border-radius:8px;padding:0 14px;font-size:16px;cursor:pointer;">↑</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════════════
+const API = 'https://axis-backend-tyy1.onrender.com/api'
+
+// ════════════════════════════════════════════════════════════
+//  JWT HELPERS
+// ════════════════════════════════════════════════════════════
+function getJWT()         { return localStorage.getItem('axis-jwt') }
+function setJWT(token)    { localStorage.setItem('axis-jwt', token) }
+function clearJWT()       { localStorage.removeItem('axis-jwt') }
+function isJWTValid() {
+  const token = getJWT()
+  if (!token) return false
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return payload.exp * 1000 > Date.now()
+  } catch(e) { return false }
+}
+
+// ════════════════════════════════════════════════════════════
+//  API HELPER — every request goes through here
+// ════════════════════════════════════════════════════════════
+async function api(method, path, body) {
+  const headers = { 'Content-Type': 'application/json' }
+  const jwt = getJWT()
+  if (jwt) headers['Authorization'] = `Bearer ${jwt}`
+
+  const opts = { method, headers }
+  if (body) opts.body = JSON.stringify(body)
+
+  const res = await fetch(`${API}${path}`, opts)
+
+  // If 401, JWT expired — show auth screen again
+  if (res.status === 401) {
+    clearJWT()
+    showAuthOverlay()
+    return null
+  }
+
+  return res.json()
+}
+
+// Shorthand helpers
+const GET    = (path)       => api('GET',    path)
+const POST   = (path, body) => api('POST',   path, body)
+const PATCH  = (path, body) => api('PATCH',  path, body)
+const DELETE = (path)       => api('DELETE', path)
+
+// ════════════════════════════════════════════════════════════
+//  CORE UTILITIES (same as before)
+// ════════════════════════════════════════════════════════════
+var DECOY_POOL = ["phantom","archive","solstice","drift","ember","vault","lunar","tide","penelope","kate","mikayla","winnie","nadine","aaron","lolo","sophie","yancey","amber","julian","charlene","zoe","cheryl","ilyssa","cherry","abigail","copper","atlas","flint","haven","morse","cedar","prism","echo","north","signal","quill","iron","ridge","frost","grove","warden","cipher","delta","noble","slate","raven","stone","blade","mist","carve","tower","bloom","swift","dusk","coral","axiom","forge","pewter","justin","nike","qbi","jacinda","anna","stella","leia","maddie","orion","velvet","crimson","luna","felix","nova","jasper","ivy","sienna","zane","aria","knox","indigo","marble","zephyr","cleo","phoenix","briar","oscar","talia","rio","blaze","dahlia","cobalt","rhea","sage","titan","lyra","milo","onyx","piper","quinn","sol","theo","ursa","vance","wren","xena","yara","zuri","alder","bruno","cairo","delia","elara","finn","gaia","hugo","irene","juno","kira","leo","mira","nash","opal","paige","rex","skye","tess","vera","willow","xavier","yasmin","zack","basil","dante","elise","flora","gideon","hazel","isla","jett","kaia","logan","mabel","noel","olive","penny","quentin","rowan","selah","tristan","uma","valen","west","ximena","yosef","zelda","ash","brook","cliff","drew","evan","faye","gray","hope","ian","jade","kyle","lane","max","nina","otto","pearl","reid","shay","troy","vince","wade","yuki"]
+
+var INACTIVITY_MS = 5 * 60 * 1000
+var inactivityTimer = null
+var state = {
+  data: null, view: 'calendar', calOffset: 0,
+  editingTask: null, editingCell: null, recurringOn: false,
+  theme: localStorage.getItem('axis-theme') || 'light',
+  unlocked: false
+}
+var DAYS       = ['SUN','MON','TUE','WED','THU','FRI','SAT']
+var DAYS_FULL  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+var MONTHS     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+var MONTHS_FULL= ['January','February','March','April','May','June','July','August','September','October','November','December']
+var TAG_COLORS = {
+  CLS:{bg:'#E6F1FB',color:'#185FA5'},DHN:{bg:'#FBEAF0',color:'#993556'},
+  EVT:{bg:'#FAEEDA',color:'#BA7517'},GYM:{bg:'#EAF3DE',color:'#3B6D11'},
+  HNG:{bg:'#FBEAF0',color:'#993556'},LDRS:{bg:'#EEEDFE',color:'#534AB7'},
+  MTG:{bg:'#E6F1FB',color:'#185FA5'},READ:{bg:'#E1F5EE',color:'#0F6E56'},
+  RUCK:{bg:'#FAEEDA',color:'#BA7517'},RUN:{bg:'#EAF3DE',color:'#3B6D11'},
+  SOCE:{bg:'#FAECE7',color:'#D85A30'},STD:{bg:'#EEEDFE',color:'#534AB7'},
+  VOL:{bg:'#E1F5EE',color:'#0F6E56'}
+}
+
+function tagColor(tag) {
+  if (TAG_COLORS[tag]) return TAG_COLORS[tag]
+  var fallbacks = [
+    {bg:'#F1EFE8',color:'#5F5E5A'},{bg:'#E6F1FB',color:'#185FA5'},
+    {bg:'#FAEEDA',color:'#BA7517'},{bg:'#EAF3DE',color:'#3B6D11'},
+    {bg:'#EEEDFE',color:'#534AB7'},{bg:'#FBEAF0',color:'#993556'},
+    {bg:'#E1F5EE',color:'#0F6E56'},{bg:'#FAECE7',color:'#D85A30'}
+  ]
+  var hash = 0
+  for (var i = 0; i < tag.length; i++) hash = tag.charCodeAt(i) + ((hash << 5) - hash)
+  return fallbacks[Math.abs(hash) % fallbacks.length]
+}
+
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t)
+  document.getElementById('theme-toggle').textContent = t === 'dark' ? '☀ Light mode' : '☾ Dark mode'
+  localStorage.setItem('axis-theme', t)
+  state.theme = t
+}
+applyTheme(state.theme)
+document.getElementById('theme-toggle').addEventListener('click', function() {
+  applyTheme(state.theme === 'dark' ? 'light' : 'dark')
+})
+
+function today()        { var d = new Date(); d.setHours(0,0,0,0); return d }
+function esc(s)         { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function cap(s)         { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '' }
+function toast(msg)     { var el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); setTimeout(function(){ el.classList.remove('show') }, 2500) }
+function fmtTime(min)   { if (min === null || min === undefined || isNaN(min)) return ''; return String(Math.floor(min/60)).padStart(2,'0') + ':' + String(min%60).padStart(2,'0') }
+function daysBetween(a,b) { return Math.round((b-a)/86400000) }
+
+function updateSidebarDate() {
+  var d = new Date()
+  document.getElementById('sidebar-date').textContent = d.getDate() + ' ' + MONTHS_FULL[d.getMonth()] + ' ' + d.getFullYear()
+}
+updateSidebarDate()
+
+function setGreeting() {
+  var h = new Date().getHours()
+  document.getElementById('greeting').textContent = (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + ', Joshua'
+  var now = new Date()
+  document.getElementById('overview-date').textContent = now.getDate() + ' ' + MONTHS_FULL[now.getMonth()] + ' ' + now.getFullYear()
+  document.getElementById('overview-day').textContent  = DAYS_FULL[now.getDay()]
+}
+setGreeting()
+
+// ════════════════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════════════════
+var wrongCount = 0, authClockInterval = null
+
+function showAuthOverlay() {
+  state.unlocked = false
+  wrongCount = 0
+  clearInactivityTimer()
+  document.getElementById('auth-overlay').classList.add('show')
+  showTokenScreen()
+  startAuthClock()
+}
+
+function startAuthClock() {
+  if (authClockInterval) clearInterval(authClockInterval)
+  function tick() {
+    var now = new Date(), h = now.getHours()
+    document.getElementById('auth-greeting').textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+    document.getElementById('auth-datetime').textContent = DAYS[now.getDay()] + ' · ' + MONTHS[now.getMonth()].toUpperCase() + ' ' + now.getDate() + ' · ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0')
+  }
+  tick(); authClockInterval = setInterval(tick, 1000)
+}
+
+async function buildTokenGrid() {
+  if (window._shuffleInterval) { cancelAnimationFrame(window._shuffleInterval); window._shuffleInterval = null }
+  if (window._rebuildInterval) { clearInterval(window._rebuildInterval); window._rebuildInterval = null }
+
+  // Fetch one real token from backend
+  const data = await GET('/auth/token')
+  const validToken = data?.token || null
+
+  var decoys = DECOY_POOL.filter(w => w !== validToken).sort(() => Math.random() - 0.5)
+  var tokens = validToken ? [validToken] : []
+  for (var i = 0; i < decoys.length && tokens.length < 12; i++) tokens.push(decoys[i])
+  tokens = tokens.sort(() => Math.random() - 0.5)
+
+  renderTokenGrid(tokens)
+  window._rebuildInterval = setInterval(buildTokenGrid, 15000)
+}
+
+function renderTokenGrid(tokens) {
+  var grid = document.getElementById('token-grid')
+  grid.innerHTML = ''
+  if (window._shuffleInterval) { cancelAnimationFrame(window._shuffleInterval); window._shuffleInterval = null }
+
+  var floaters = [], H = 180
+  tokens.forEach(function(word) {
+    var btn = document.createElement('button')
+    btn.className = 'token-btn'
+    btn.textContent = word
+    btn.onclick = function() { checkToken(word) }
+    grid.appendChild(btn)
+    var bw = btn.offsetWidth || 80, bh = btn.offsetHeight || 34, W = grid.offsetWidth || 280
+    var x = Math.random()*(W-bw), y = Math.random()*(H-bh)
+    var sp = 0.25 + Math.random()*0.45, ang = Math.random()*Math.PI*2
+    btn.style.left = x+'px'; btn.style.top = y+'px'
+    floaters.push({ el:btn, x, y, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, bw, bh })
+  })
+
+  function tick() {
+    window._shuffleInterval = requestAnimationFrame(tick)
+    var W = grid.offsetWidth || 280
+    floaters.forEach(function(t) {
+      t.x += t.vx; t.y += t.vy
+      if (t.x < 0)        { t.x = 0;        t.vx =  Math.abs(t.vx) }
+      if (t.x > W-t.bw)   { t.x = W-t.bw;   t.vx = -Math.abs(t.vx) }
+      if (t.y < 0)        { t.y = 0;        t.vy =  Math.abs(t.vy) }
+      if (t.y > H-t.bh)   { t.y = H-t.bh;   t.vy = -Math.abs(t.vy) }
+      t.el.style.left = t.x+'px'; t.el.style.top = t.y+'px'
+    })
+  }
+  tick()
+}
+
+async function checkToken(word) {
+  var allBtns = document.querySelectorAll('.token-btn')
+  allBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.6' })
+
+  const data = await POST('/auth/verify', { token: word })
+
+  if (data?.valid) {
+    setJWT(data.jwt)
+    wrongCount = 0
+    document.querySelector('.auth-card').classList.add('auth-card-blur')
+    setTimeout(function() {
+      clearInterval(authClockInterval)
+      if (window._shuffleInterval) cancelAnimationFrame(window._shuffleInterval)
+      if (window._rebuildInterval) clearInterval(window._rebuildInterval)
+      document.getElementById('auth-overlay').classList.remove('show')
+      document.querySelector('.auth-card').classList.remove('auth-card-blur')
+      state.unlocked = true
+      startInactivityTimer()
+      loadData(false)
+    }, 300)
+  } else {
+    allBtns.forEach(b => { b.disabled = false; b.style.opacity = ''; b.style.cursor = 'none' })
+    wrongCount++
+    document.querySelector('.auth-card').style.animation = 'none'
+    setTimeout(() => { document.querySelector('.auth-card').style.animation = 'shake 0.4s ease' }, 10)
+    var delay = wrongCount >= 2 ? 3000 + (wrongCount - 2) * 5000 : 500
+    allBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.4' })
+    setTimeout(() => {
+      allBtns.forEach(b => { b.disabled = false; b.style.opacity = ''; b.style.cursor = 'none' })
+      buildTokenGrid()
+      document.getElementById('auth-attempts').textContent = ''
+    }, delay)
+  }
+}
+
+function showTokenScreen() {
+  document.getElementById('token-screen').classList.remove('hidden')
+  document.getElementById('reset-screen').classList.remove('show')
+  buildTokenGrid()
+}
+function showResetScreen() {
+  document.getElementById('token-screen').classList.add('hidden')
+  document.getElementById('reset-screen').classList.add('show')
+}
+
+// ════════════════════════════════════════════════════════════
+//  DATA LOADING
+// ════════════════════════════════════════════════════════════
+function tryLoadCache() {
+  try { var raw = localStorage.getItem('axis-cache'); if (raw) { state.data = JSON.parse(raw); return true } } catch(e) {}
+  return false
+}
+function saveCache(data) {
+  try { localStorage.setItem('axis-cache', JSON.stringify(data)) } catch(e) {}
+}
+
+async function loadData(silent) {
+  if (!silent) {
+    if (tryLoadCache()) {
+      document.getElementById('loading').style.display = 'none'
+      document.getElementById('app').classList.add('unlocked')
+      document.getElementById('offline-banner').style.display = 'block'
+      document.getElementById('offline-banner').textContent = '⟳ Syncing...'
+      renderAll()
+    } else {
+      document.getElementById('loading').style.display = 'flex'
+    }
+  }
+
+  try {
+    const [tasksRes, recurringRes] = await Promise.all([
+      GET('/tasks'),
+      GET('/tasks/recurring')
+    ])
+
+    if (!tasksRes) return // 401 handled inside api()
+
+    state.data = {
+      todo:      tasksRes.tasks      || [],
+      recurring: recurringRes.recurring || [],
+      tracker:   { rows: [] }, // tracker events come from tasks with times
+      trash:     [],
+      tagKey:    {}
+    }
+
+    // Build tagKey from recurring data
+    ;(state.data.recurring || []).forEach(r => {
+      if (r.tag && r.name) state.data.tagKey[r.tag] = r.name
+    })
+
+    saveCache(state.data)
+    document.getElementById('offline-banner').style.display = 'none'
+    var now = new Date()
+    document.getElementById('last-updated').textContent = 'Updated ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0')
+    document.getElementById('loading').style.display = 'none'
+    document.getElementById('app').classList.add('unlocked')
+    renderAll()
+  } catch(e) {
+    console.error('loadData error:', e)
+    document.getElementById('offline-banner').style.display = 'block'
+    document.getElementById('offline-banner').textContent = '● Offline — showing last synced data'
+    document.getElementById('loading').style.display = 'none'
+    document.getElementById('app').classList.add('unlocked')
+  }
+}
+
+// Auto refresh every 60s
+setInterval(function() {
+  if (navigator.onLine && state.unlocked && !document.hidden) loadData(true)
+}, 60000)
+
+function renderAll() { renderOverview(); renderAgenda(); renderTrash(); populateTagSelect() }
+
+// ════════════════════════════════════════════════════════════
+//  OVERVIEW + TASKS (same logic, just data comes from state)
+// ════════════════════════════════════════════════════════════
+function categorizeTasks() {
+  if (!state.data) return { pastDue:[], today:[], tomorrow:[], future:[], undated:[] }
+  var t = today().getTime(), tom = t + 86400000, week = t + 7*86400000
+  var pastDue = [], tod = [], tom2 = [], future = [], undated = []
+
+  ;(state.data.todo || []).forEach(function(task) {
+    if (!task.due_date) { if (!task.completed) undated.push(task); return }
+    var d = new Date(task.due_date); d.setHours(0,0,0,0); var dt = d.getTime()
+    if (dt < t)         pastDue.push(task)
+    else if (dt === t)  tod.push(task)
+    else if (dt === tom) tom2.push(task)
+    else if (dt <= week) future.push(task)
+  })
+  return { pastDue, today:tod, tomorrow:tom2, future, undated }
+}
+
+var AXIS_STAR_SVG = '<svg width="16" height="16" viewBox="0 0 52 52" fill="none" style="flex-shrink:0;margin-top:1px;"><path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="#BA7517" stroke-width="2.5" fill="rgba(186,117,23,0.15)" stroke-linejoin="round"/><circle cx="26" cy="26" r="4" fill="#BA7517"/></svg>'
+
+function renderOverview() {
+  setGreeting()
+  var cat = categorizeTasks()
+  document.getElementById('m-pastdue').textContent = cat.pastDue.length
+  document.getElementById('m-today').textContent   = cat.today.length
+  document.getElementById('m-week').textContent    = cat.today.length + cat.tomorrow.length + cat.future.length
+
+  var html = ''
+  if (cat.undated.length) {
+    html += '<div class="task-group"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="section-label" style="margin-bottom:0;">No due date</div><span style="font-size:10px;font-weight:500;background:var(--cream2);color:var(--brown4);border:1px solid var(--cream3);border-radius:20px;padding:1px 8px;">' + cat.undated.length + '</span></div>'
+    html += '<div style="background:var(--cream);border:1px solid var(--cream3);border-radius:10px;padding:4px 14px;">'
+    cat.undated.forEach(function(task) {
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cream3);cursor:pointer;" onclick="openEditTask(\'' + task.id + '\')">' + AXIS_STAR_SVG
+      html += '<span style="font-size:13px;color:var(--brown);flex:1;">' + esc(task.name) + '</span>'
+      html += '<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\'' + task.id + '\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\'' + task.id + '\')" title="Delete">🗑</button></div></div>'
+    })
+    html += '</div></div>'
+  }
+  if (cat.pastDue.length)  { html += '<div class="task-group"><div class="section-label" style="color:var(--red);">Past due</div>';  cat.pastDue.forEach(t  => { html += taskCardHTML(t,'pastdue')  }); html += '</div>' }
+  if (cat.today.length)    { html += '<div class="task-group"><div class="section-label" style="color:var(--amber);">Today</div>';   cat.today.forEach(t    => { html += taskCardHTML(t,'today')    }); html += '</div>' }
+  if (cat.tomorrow.length) { html += '<div class="task-group"><div class="section-label">Tomorrow</div>';                            cat.tomorrow.forEach(t => { html += taskCardHTML(t,'tomorrow')  }); html += '</div>' }
+  if (cat.future.length)   { html += '<div class="task-group"><div class="section-label">Next 7 days</div>';                         cat.future.forEach(t   => { html += taskCardHTML(t,'future')    }); html += '</div>' }
+  if (!html) html = '<div class="empty-state"><p>Nothing due this week.</p></div>'
+  document.getElementById('overview-tasks').innerHTML = html
+}
+
+function taskCardHTML(task, type) {
+  var colors = { pastdue:['var(--red-bg)','var(--red)'], today:['var(--amber-bg)','var(--amber)'], tomorrow:['var(--cream2)','var(--brown3)'], future:['var(--cream2)','var(--brown3)'] }
+  var c = colors[type] || colors.future
+  var hasNote = task.note && task.note.trim()
+  var doneCls = task.completed ? ' done' : ''
+  var dateStr = ''
+  if (!task.due_date) dateStr = 'No due date'
+  else if (type === 'pastdue') { var daysAgo = daysBetween(new Date(task.due_date).setHours(0,0,0,0), today()); dateStr = daysAgo === 1 ? 'Yesterday' : daysAgo + ' days ago' }
+  else dateStr = new Date(task.due_date).toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric', weekday:'long' })
+
+  return '<div class="task-card" onclick="openEditTask(\'' + task.id + '\')">' +
+    '<div class="task-icon" style="background:' + c[0] + '"><div class="task-icon-inner" style="background:' + c[1] + '"></div></div>' +
+    '<div class="task-info"><div class="task-name' + doneCls + '">' + esc(task.name) + '</div><div class="task-meta">' + dateStr + '</div></div>' +
+    (hasNote ? '<span class="note-pill"><span class="note-dot"></span>note</span>' : '') +
+    '<div class="task-actions">' +
+    (task.completed
+      ? '<button class="task-action-btn" onclick="event.stopPropagation();uncompleteTask(\'' + task.id + '\')" title="Undo">↩</button>'
+      : '<button class="task-action-btn" onclick="event.stopPropagation();completeTask(\'' + task.id + '\')" title="Done">✓</button>') +
+    '<button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\'' + task.id + '\')" title="Delete">🗑</button>' +
+    '</div></div>'
+}
+
+// ════════════════════════════════════════════════════════════
+//  TASK ACTIONS
+// ════════════════════════════════════════════════════════════
+async function completeTask(id) {
+  const res = await POST(`/tasks/${id}/complete`)
+  if (res?.success) { toast('Marked done'); loadData(true) }
+  else toast('Error: ' + res?.error)
+}
+
+async function uncompleteTask(id) {
+  const res = await POST(`/tasks/${id}/uncomplete`)
+  if (res?.success) { toast('Unmarked'); loadData(true) }
+  else toast('Error: ' + res?.error)
+}
+
+async function deleteTask(id) {
+  const res = await DELETE(`/tasks/${id}`)
+  if (res?.success) { toast('Moved to trash'); loadData(true) }
+  else toast('Error: ' + res?.error)
+}
+
+function openAddModal() {
+  state.editingTask = null
+  document.getElementById('modal-title').textContent = 'Add task'
+  document.getElementById('f-name').value = ''
+  document.getElementById('f-note').value = ''
+  document.getElementById('f-tag').value  = ''
+  document.getElementById('f-time').value = ''
+  var td = new Date()
+  document.getElementById('f-date').value = td.getFullYear() + '-' + String(td.getMonth()+1).padStart(2,'0') + '-' + String(td.getDate()).padStart(2,'0')
+  document.getElementById('task-modal').classList.add('open')
+  setTimeout(() => document.getElementById('f-name').focus(), 100)
+}
+
+function openEditTask(id) {
+  var task = (state.data?.todo || []).find(t => t.id === id)
+  if (!task) return
+  state.editingTask = task
+  document.getElementById('modal-title').textContent = 'Edit task'
+  document.getElementById('f-name').value = task.name || ''
+  document.getElementById('f-note').value = task.note || ''
+  document.getElementById('f-tag').value  = task.tag  || ''
+  document.getElementById('f-date').value = task.due_date ? task.due_date.split('T')[0] : ''
+  document.getElementById('f-time').value = task.due_time || ''
+  document.getElementById('task-modal').classList.add('open')
+}
+
+document.getElementById('modal-cancel').addEventListener('click', () => document.getElementById('task-modal').classList.remove('open'))
+document.getElementById('task-modal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open') })
+
+document.getElementById('modal-save').addEventListener('click', async function() {
+  var name = document.getElementById('f-name').value.trim()
+  if (!name) { toast('Task name required'); return }
+
+  var dateVal = document.getElementById('f-date').value
+  var body = {
+    name,
+    due_date:  dateVal || null,
+    due_time:  document.getElementById('f-time').value || null,
+    tag:       document.getElementById('f-tag').value  || null,
+    note:      document.getElementById('f-note').value.trim() || null
+  }
+
+  var res
+  if (state.editingTask) {
+    res = await PATCH(`/tasks/${state.editingTask.id}`, body)
+  } else {
+    res = await POST('/tasks', body)
+  }
+
+  document.getElementById('task-modal').classList.remove('open')
+  if (res?.success) { toast(state.editingTask ? 'Saved' : 'Task added'); loadData(true) }
+  else toast('Error: ' + res?.error)
+})
+
+function populateTagSelect() {
+  var sel = document.getElementById('f-tag')
+  sel.innerHTML = '<option value="">No tag</option>'
+  var tagKey = state.data?.tagKey || {}
+  Object.keys(TAG_COLORS).forEach(code => {
+    var opt = document.createElement('option')
+    opt.value = code
+    opt.textContent = code + ' — ' + (tagKey[code] || code)
+    sel.appendChild(opt)
+  })
+}
+
+// ════════════════════════════════════════════════════════════
+//  AGENDA / CALENDAR
+// ════════════════════════════════════════════════════════════
+function renderAgenda() {
+  if (!state.data) { document.getElementById('agenda-grid').innerHTML = '<div class="empty-state"><p>No data.</p></div>'; return }
+  var todayTs = today().getTime()
+  var todoTasks = state.data.todo || []
+
+  // Group tasks by date
+  var tasksByDate = {}
+  todoTasks.forEach(function(task) {
+    if (!task.due_date) return
+    var d = new Date(task.due_date); d.setHours(0,0,0,0)
+    var key = d.getTime()
+    if (!tasksByDate[key]) tasksByDate[key] = []
+    tasksByDate[key].push(task)
+  })
+
+  var days = []
+  for (var i = -2 + (state.calOffset*44); i <= 42 + (state.calOffset*44); i++) {
+    var d2 = new Date(todayTs); d2.setDate(d2.getDate() + i); d2.setHours(0,0,0,0)
+    days.push(d2.getTime())
+  }
+
+  var html = ''
+  days.forEach(function(dayTs) {
+    var isToday = dayTs === todayTs
+    var isPast  = dayTs < todayTs
+    var d3      = new Date(dayTs)
+    var todos   = tasksByDate[dayTs] || []
+    var isNearby = Math.abs(dayTs - todayTs) <= 5 * 86400000
+
+    if (!todos.length && !isNearby) return
+
+    if (isToday) {
+      html += '<div class="agenda-today-card">'
+      html += '<div class="agenda-day-header" style="margin-bottom:10px;"><div style="width:7px;height:7px;border-radius:50%;background:#BA7517;flex-shrink:0;"></div><div class="agenda-day-title" style="color:#faf7f2;">TODAY — ' + DAYS[d3.getDay()] + ' ' + MONTHS[d3.getMonth()].toUpperCase() + ' ' + d3.getDate() + '</div></div>'
+      if (!todos.length) {
+        html += '<div class="agenda-empty" style="color:rgba(250,247,242,0.4);">Nothing scheduled</div>'
+      } else {
+        todos.forEach(function(task) {
+          var doneCls = task.completed ? 'text-decoration:line-through;opacity:0.4;' : ''
+          html += '<div class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="openEditTask(\'' + task.id + '\')">'
+          html += '<span class="agenda-note" style="color:rgba(250,247,242,0.9);' + doneCls + '">' + esc(task.name) + '</span>'
+          if (task.due_time) html += '<span style="font-size:10px;color:#BA7517;margin-left:auto;">' + task.due_time + '</span>'
+          html += '</div>'
+        })
+      }
+      html += '</div>'
+    } else {
+      html += '<div class="agenda-day-card" style="' + (isPast ? 'opacity:0.6;' : '') + '">'
+      html += '<div class="agenda-day-header"><div class="agenda-day-title" style="color:var(--brown4);">' + DAYS[d3.getDay()] + ' ' + MONTHS[d3.getMonth()] + ' ' + d3.getDate() + '</div></div>'
+      if (!todos.length) {
+        html += '<div class="agenda-empty">Nothing scheduled</div>'
+      } else {
+        todos.forEach(function(task) {
+          var doneCls = task.completed ? 'text-decoration:line-through;color:var(--brown4);' : ''
+          html += '<div class="agenda-event-row" style="cursor:pointer;" onclick="openEditTask(\'' + task.id + '\')">'
+          html += '<span class="agenda-time" style="color:var(--brown4);min-width:60px;">' + (task.due_time || 'TODO') + '</span>'
+          html += '<span class="agenda-note" style="color:var(--brown2);' + doneCls + '">' + esc(task.name) + '</span>'
+          html += '</div>'
+        })
+      }
+      html += '</div>'
+    }
+  })
+
+  document.getElementById('agenda-grid').innerHTML = html || '<div class="empty-state"><p>No data in this range.</p></div>'
+}
+
+document.getElementById('cal-prev').addEventListener('click',     function() { state.calOffset--; renderAgenda() })
+document.getElementById('cal-next').addEventListener('click',     function() { state.calOffset++; renderAgenda() })
+document.getElementById('cal-today-btn').addEventListener('click',function() { state.calOffset = 0; renderAgenda() })
+
+// ════════════════════════════════════════════════════════════
+//  TRASH
+// ════════════════════════════════════════════════════════════
+async function renderTrash() {
+  const res = await GET('/tasks/trash')
+  var items = res?.trash || []
+  if (!items.length) { document.getElementById('trash-list').innerHTML = '<div class="empty-state"><p>Trash is empty.</p></div>'; return }
+  var html = ''
+  items.forEach(function(item) {
+    var daysLeft = Math.ceil((new Date(item.expires_at) - Date.now()) / 86400000)
+    var name = item.task_data?.name || 'Unknown'
+    html += '<div class="trash-card"><div style="flex:1;"><div class="trash-name">' + esc(name) + '</div><div class="trash-meta">Expires in ' + daysLeft + ' day' + (daysLeft===1?'':'s') + '</div></div><button class="btn btn-secondary" onclick="restoreTask(\'' + item.id + '\')" style="font-size:12px;padding:6px 12px;">Restore</button></div>'
+  })
+  document.getElementById('trash-list').innerHTML = html
+}
+
+async function restoreTask(id) {
+  const res = await POST(`/tasks/trash/${id}/restore`)
+  if (res?.success) { toast('Restored'); loadData(true) }
+  else toast('Error: ' + res?.error)
+}
+
+document.getElementById('empty-trash-btn').addEventListener('click', async function() {
+  if (!confirm('Permanently delete all trashed items?')) return
+  const res = await DELETE('/tasks/trash')
+  if (res?.success) { toast('Trash emptied'); renderTrash() }
+})
+
+// ════════════════════════════════════════════════════════════
+//  FINANCE
+// ════════════════════════════════════════════════════════════
+var FIN_CATEGORIES = [
+  { id:'income',         label:'Income',         color:'#0F6E56', bg:'#E1F5EE', children:[{id:'stipend',label:'Stipend'},{id:'bah',label:'BAH'},{id:'bas',label:'BAS'},{id:'leave_pay',label:'Leave Pay'},{id:'scholarship',label:'Scholarship'},{id:'side_income',label:'Side income'},{id:'misc_credit',label:'Misc. credit'}]},
+  { id:'military',       label:'Military',       color:'#534AB7', bg:'#EEEDFE', children:[{id:'uniform',label:'Uniform / Gear'},{id:'mess',label:'Mess / Chow hall'},{id:'training',label:'Training & Fees'},{id:'equip_maint',label:'Equipment maintenance'},{id:'misc_mil',label:'Misc. military'}]},
+  { id:'personal',       label:'Personal',       color:'#3d342a', bg:'#f2ebe0', children:[{id:'food',label:'Food & Drinks'},{id:'hangouts',label:'Hangouts & Social'},{id:'shopping',label:'Shopping'},{id:'subscriptions',label:'Subscriptions'},{id:'medical',label:'Medical'},{id:'fitness',label:'Fitness'},{id:'electronics',label:'Electronics'},{id:'travel',label:'Travel'},{id:'entertainment',label:'Entertainment'},{id:'misc_personal',label:'Misc. personal'}]},
+  { id:'transportation', label:'Transportation', color:'#185FA5', bg:'#E6F1FB', children:[{id:'bus',label:'Bus'},{id:'mrt',label:'MRT'},{id:'taxi',label:'Taxi / Rideshare'},{id:'youbike',label:'YouBike'},{id:'gas',label:'Gas / Fuel'},{id:'parking',label:'Parking'},{id:'flight',label:'Flight'},{id:'misc_transport',label:'Misc. transport'}]},
+  { id:'education',      label:'Education',      color:'#BA7517', bg:'#FAEEDA', children:[{id:'textbooks',label:'Textbooks'},{id:'tuition',label:'Tuition & Fees'},{id:'tutoring',label:'Tutoring'},{id:'online_course',label:'Online courses'},{id:'misc_edu',label:'Misc. education'}]},
+  { id:'housing',        label:'Housing',        color:'#993556', bg:'#FBEAF0', children:[{id:'rent',label:'Rent'},{id:'utilities',label:'Utilities'},{id:'supplies',label:'Supplies & Furniture'}]},
+  { id:'finance',        label:'Finance',        color:'#6b5c4e', bg:'#f2ebe0', children:[{id:'transfer',label:'Transfer'},{id:'fees',label:'Fees & Charges'},{id:'loan',label:'Loan repayment'},{id:'discrepancy',label:'Discrepancy'}]}
+]
+
+var CURRENCY_CONFIG = {
+  TWD:'NTD$', NTD:'NTD$', USD:'USD$', AUD:'AUD$', EUR:'€', GBP:'£',
+  JPY:'¥', KRW:'₩', SGD:'SGD$', HKD:'HKD$', CNY:'¥', THB:'฿',
+  MYR:'MYR$', PHP:'₱', IDR:'Rp', VND:'₫', INR:'₹', CAD:'CAD$', NZD:'NZD$', CHF:'CHF'
+}
+
+var finState = {
+  data: null, displayCurrency: 'TWD', fxRates: {},
+  selectedMonth: null, txOffset: 0, TX_PAGE: 20,
+  editingTxId: null, editingOutId: null,
+  searchQuery: '', allTxs: []
+}
+
+function finFmt(amount, currency) {
+  currency = (currency || finState.displayCurrency || 'TWD').toUpperCase()
+  var sym = CURRENCY_CONFIG[currency] || (currency + '$')
+  var abs = Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits:0, maximumFractionDigits:2 })
+  // Currencies that go after the number
+  var after = ['€','₫']
+  var formatted = after.includes(sym) ? abs + sym : sym + abs
+  return amount < 0 ? '−' + formatted : formatted
+}
+
+function finConvert(amount, fromCurrency) {
+  fromCurrency = (fromCurrency || 'TWD').toUpperCase()
+  if (fromCurrency === finState.displayCurrency) return amount
+  var inTWD = fromCurrency === 'TWD' ? amount : amount * (finState.fxRates[fromCurrency] || 1)
+  if (finState.displayCurrency === 'TWD') return inTWD
+  return inTWD / (finState.fxRates[finState.displayCurrency] || 1)
+}
+
+async function loadFinanceData() {
+  const res = await GET('/finance/data')
+  if (!res?.success) { toast('Finance data error'); return }
+  finState.data    = res
+  finState.allTxs  = res.transactions || []
+  var now = new Date()
+  finState.selectedMonth = { year: now.getFullYear(), month: now.getMonth() }
+  renderFinanceAll()
+
+  // Load FX rates
+  const fxRes = await GET('/finance/fx')
+  if (fxRes?.rates) {
+    finState.fxRates = fxRes.rates
+    document.getElementById('fx-rate-label').textContent = 'NTD$1 = USD$' + (1 / (fxRes.rates.USD || 32.4)).toFixed(4)
+    renderFinanceAll()
+  }
+}
+
+function renderFinanceAll() {
+  renderBalances()
+  renderCurrencyToggle()
+  renderMonthTabs()
+  renderMonthlySummary()
+  renderTransactions()
+  renderOutstanding()
+}
+
+function renderBalances() {
+  if (!finState.data) return
+  var balances = finState.data.balances || {}
+  var html = '', net = 0
+  Object.keys(balances).forEach(function(acct) {
+    var raw = balances[acct]
+    var converted = finConvert(raw.amount, raw.currency)
+    net += converted
+    html += '<div style="background:var(--cream2);border-radius:8px;padding:10px 12px;"><div style="font-size:10px;color:var(--brown4);margin-bottom:3px;">' + esc(acct) + '</div><div style="font-size:16px;font-weight:500;color:' + (converted < 0 ? 'var(--red)' : 'var(--brown)') + ';">' + finFmt(Math.abs(converted)) + '</div></div>'
+  })
+  document.getElementById('balance-grid').innerHTML = html
+  var netEl = document.getElementById('net-balance-val')
+  netEl.textContent  = finFmt(net)
+  netEl.style.color  = net < 0 ? 'var(--red)' : 'var(--brown)'
+}
+
+function renderCurrencyToggle() {
+  var currencies = ['TWD','USD'].concat(Object.keys(finState.fxRates).filter(c => c !== 'TWD' && c !== 'USD' && c !== 'NT$'))
+  document.getElementById('cur-toggle').innerHTML = currencies.map(function(cur) {
+    var active = cur === finState.displayCurrency
+    return '<button onclick="switchFinCurrency(\'' + cur + '\')" style="font-size:11px;padding:2px 9px;border-radius:20px;border:1px solid var(--cream3);background:' + (active?'var(--brown)':'none') + ';color:' + (active?'var(--cream)':'var(--brown4)') + ';cursor:pointer;font-family:\'DM Sans\',sans-serif;">' + (CURRENCY_CONFIG[cur] || cur) + '</button>'
+  }).join('')
+}
+function switchFinCurrency(cur) { finState.displayCurrency = cur; renderFinanceAll() }
+
+function renderMonthTabs() {
+  if (!finState.data) return
+  // Only show months that have transactions
+  var seen = new Set(), months = []
+  finState.allTxs.forEach(function(tx) {
+    var d   = new Date(tx.date)
+    var key = d.getFullYear() + '-' + d.getMonth()
+    if (!seen.has(key)) {
+      seen.add(key)
+      months.push({ year: d.getFullYear(), month: d.getMonth(), key })
+    }
+  })
+  // Always include current month
+  var now = new Date(), curKey = now.getFullYear() + '-' + now.getMonth()
+  if (!seen.has(curKey)) months.unshift({ year: now.getFullYear(), month: now.getMonth(), key: curKey })
+  // Sort newest first
+  months.sort((a,b) => (b.year*12+b.month) - (a.year*12+a.month))
+  // Keep only 6 most recent
+  months = months.slice(0, 6)
+
+  var sel = finState.selectedMonth
+  document.getElementById('finance-month-tabs').innerHTML = months.map(function(t) {
+    var active = sel && t.year === sel.year && t.month === sel.month
+    var label  = new Date(t.year, t.month, 1).toLocaleString('en-US', { month:'short', year:'numeric' })
+    return '<button onclick="selectFinMonth(' + t.year + ',' + t.month + ')" style="font-size:12px;padding:4px 14px;border-radius:20px;border:1px solid var(--cream3);background:' + (active?'var(--brown)':'none') + ';color:' + (active?'var(--cream)':'var(--brown3)') + ';cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:\'DM Sans\',sans-serif;">' + label + '</button>'
+  }).join('')
+}
+function selectFinMonth(year, month) { finState.selectedMonth = { year, month }; finState.txOffset = 0; renderMonthTabs(); renderMonthlySummary(); renderTransactions() }
+
+function getMonthTxs() {
+  if (!finState.selectedMonth) return []
+  var sel = finState.selectedMonth
+  var txs = finState.searchQuery.trim()
+    ? finState.allTxs.filter(tx => {
+        var q = finState.searchQuery.toLowerCase()
+        return (tx.description||'').toLowerCase().includes(q) ||
+               (tx.vendor||'').toLowerCase().includes(q) ||
+               (tx.note||'').toLowerCase().includes(q) ||
+               (tx.ledger||'').toLowerCase().includes(q) ||
+               (tx.category||'').toLowerCase().includes(q) ||
+               (tx.subcategory||'').toLowerCase().includes(q)
+      })
+    : finState.allTxs.filter(tx => {
+        var d = new Date(tx.date)
+        return d.getFullYear() === sel.year && d.getMonth() === sel.month
+      })
+  // Sort by date descending (newest first), then group by day
+  return txs.sort((a,b) => new Date(b.date) - new Date(a.date))
+}
+
+function getCatInfo(catId, subId) {
+  for (var i = 0; i < FIN_CATEGORIES.length; i++) {
+    var cat = FIN_CATEGORIES[i]
+    if (cat.id === catId) {
+      var label = cat.label
+      if (subId) { var sub = cat.children.find(c => c.id === subId); if (sub) label = sub.label }
+      return { label, color: cat.color, bg: cat.bg }
+    }
+  }
+  return { label: catId || 'Uncategorized', color: 'var(--brown3)', bg: 'var(--cream2)' }
+}
+
+function renderMonthlySummary() {
+  var txs = getMonthTxs()
+  var totalCredit = 0, totalDebit = 0, debitByCat = {}, creditByCat = {}
+  txs.forEach(function(tx) {
+    var converted = finConvert(tx.amount, tx.currency)
+    if (tx.type === 'credit') { totalCredit += converted; creditByCat[tx.category] = (creditByCat[tx.category]||0) + converted }
+    else if (tx.type === 'debit') { totalDebit += converted; debitByCat[tx.category] = (debitByCat[tx.category]||0) + converted }
+  })
+  var net = totalCredit - totalDebit
+  document.getElementById('fin-total-credit').textContent = '+' + finFmt(totalCredit)
+  document.getElementById('fin-total-debit').textContent  = '−' + finFmt(totalDebit)
+  var netEl = document.getElementById('fin-net-diff')
+  netEl.textContent = (net >= 0 ? '+' : '−') + finFmt(Math.abs(net))
+  netEl.style.color = net >= 0 ? 'var(--green)' : 'var(--red)'
+
+  function renderBreakdown(map, elId) {
+    var entries = Object.keys(map).map(k => ({ cat:k, amt:map[k] })).sort((a,b) => b.amt - a.amt)
+    var html = ''
+    entries.forEach(e => {
+      var info = getCatInfo(e.cat)
+      html += '<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;"><div style="width:7px;height:7px;border-radius:50%;background:' + info.color + ';flex-shrink:0;"></div><span style="font-size:12px;color:var(--brown3);flex:1;">' + esc(info.label) + '</span><span style="font-size:12px;font-weight:500;color:var(--brown);">' + finFmt(e.amt) + '</span></div>'
+    })
+    document.getElementById(elId).innerHTML = html || '<div style="font-size:11px;color:var(--brown4);">None</div>'
+  }
+  renderBreakdown(debitByCat,  'fin-debit-breakdown')
+  renderBreakdown(creditByCat, 'fin-credit-breakdown')
+}
+
+function renderTransactions() {
+  var txs  = getMonthTxs()
+  var page = txs.slice(0, finState.txOffset + finState.TX_PAGE)
+  var html = ''
+  var lastDay = null
+
+  page.forEach(function(tx) {
+    // ── DAY DIVIDER ───────────────────────────────────────
+    var d       = new Date(tx.date)
+    var dayKey  = d.toDateString()
+    if (dayKey !== lastDay) {
+      lastDay = dayKey
+      var isToday    = d.toDateString() === new Date().toDateString()
+      var isYesterday= d.toDateString() === new Date(Date.now()-86400000).toDateString()
+      var dayLabel   = isToday ? 'Today' : isYesterday ? 'Yesterday' : d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 0 6px;"><span style="font-size:10px;font-weight:500;color:var(--brown4);letter-spacing:0.06em;text-transform:uppercase;white-space:nowrap;">' + dayLabel + '</span><div style="flex:1;height:1px;background:var(--cream3);"></div></div>'
+    }
+
+    var converted = finConvert(tx.amount, tx.currency)
+    var isCredit  = tx.type === 'credit', isTransfer = tx.type === 'transfer'
+    var amtColor  = isCredit ? 'var(--green)' : isTransfer ? 'var(--blue)' : 'var(--red)'
+    var amtPrefix = isCredit ? '+' : isTransfer ? '⇄ ' : '−'
+    var catInfo   = getCatInfo(tx.category, tx.subcategory)
+
+    html += '<div style="display:grid;grid-template-columns:1fr 110px;gap:8px;padding:8px 0;border-bottom:1px solid var(--cream3);align-items:start;cursor:pointer;" onclick="openFinanceTxModal(\'' + tx.id + '\')">' +
+      '<div><div style="font-size:13px;font-weight:500;color:var(--brown);">' + esc(tx.description) + '</div>' +
+      (tx.vendor ? '<div style="font-size:11px;color:var(--brown4);margin-top:1px;">' + esc(tx.vendor) + '</div>' : '') +
+      '<div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;">' +
+      '<span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;background:' + catInfo.bg + ';color:' + catInfo.color + ';">' + esc(catInfo.label) + '</span>' +
+      (tx.ledger ? '<span style="font-size:10px;color:var(--brown4);padding:2px 8px;border-radius:20px;border:1px solid var(--cream3);">' + esc(tx.ledger) + '</span>' : '') +
+      (tx.note   ? '<span style="font-size:10px;color:var(--brown4);padding:2px 8px;border-radius:20px;border:1px solid var(--cream3);">' + esc(tx.note) + '</span>' : '') +
+      '</div></div>' +
+      '<div style="text-align:right;"><div style="font-size:13px;font-weight:500;color:' + amtColor + ';">' + amtPrefix + finFmt(converted) + '</div>' +
+      '<div style="font-size:11px;color:var(--brown4);margin-top:2px;">' + esc(tx.account||'') + (isTransfer && tx.to_account ? ' → ' + esc(tx.to_account) : '') + '</div></div>' +
+      '</div>'
+  })
+
+  if (!html) html = '<div style="font-size:12px;color:var(--brown4);padding:12px 0;">No transactions' + (finState.searchQuery ? ' matching "' + esc(finState.searchQuery) + '"' : ' this month') + '.</div>'
+  document.getElementById('fin-tx-list').innerHTML = html
+  document.getElementById('fin-load-more').style.display = txs.length > page.length ? 'block' : 'none'
+}
+function finLoadMore() { finState.txOffset += finState.TX_PAGE; renderTransactions() }
+
+// ── FINANCE SEARCH ────────────────────────────────────────────
+// Add this to your HTML: <input type="text" id="fin-search" placeholder="Search transactions..." ...>
+function finSearch(q) {
+  finState.searchQuery = q
+  finState.txOffset    = 0
+  renderMonthlySummary()
+  renderTransactions()
+}
+
+function renderOutstanding() {
+  if (!finState.data) return
+  var items   = finState.data.outstanding || []
+  var credits = items.filter(i => i.type === 'credit' && !i.settled)
+  var debts   = items.filter(i => i.type === 'debt'   && !i.settled)
+
+  function renderList(list, elId) {
+    var html = ''
+    list.forEach(function(item) {
+      var days      = Math.floor((Date.now() - new Date(item.date)) / 86400000)
+      var converted = finConvert(item.amount, item.currency)
+      var isCredit  = item.type === 'credit'
+      var d         = new Date(item.date)
+      html += '<div style="display:grid;grid-template-columns:1fr 110px;gap:8px;padding:9px 0;border-bottom:1px solid var(--cream3);align-items:start;cursor:pointer;" onclick="openOutstandingModal(\'' + item.id + '\')">' +
+        '<div><div style="font-size:13px;font-weight:500;color:var(--brown);">' + esc(item.person) + '</div>' +
+        (item.note ? '<div style="font-size:11px;color:var(--brown4);margin-top:1px;">' + esc(item.note) + '</div>' : '') +
+        '<div style="margin-top:4px;"><span style="font-size:10px;color:var(--brown4);">' + days + ' day' + (days===1?'':'s') + ' outstanding · ' + d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + '</span></div></div>' +
+        '<div style="text-align:right;"><div style="font-size:13px;font-weight:500;color:' + (isCredit?'var(--green)':'var(--red)') + ';">' + (isCredit?'+':'−') + finFmt(converted) + '</div></div></div>'
+    })
+    if (!html) html = '<div style="font-size:12px;color:var(--brown4);padding:6px 0;">None.</div>'
+    document.getElementById(elId).innerHTML = html
+  }
+
+  renderList(credits, 'outstanding-credit-list')
+  renderList(debts,   'outstanding-debt-list')
+
+  var totalCredit = credits.reduce((s,i) => s + finConvert(i.amount, i.currency), 0)
+  var totalDebt   = debts.reduce((s,i)   => s + finConvert(i.amount, i.currency), 0)
+  document.getElementById('outstanding-credit-total').textContent = '+' + finFmt(totalCredit)
+  document.getElementById('outstanding-debt-total').textContent   = '−' + finFmt(totalDebt)
+}
+
+// ── FINANCE MODALS ────────────────────────────────────────────
+var _finCatSelected = { catId: null, subId: null }
+
+function buildCategorySelector() {
+  var html = ''
+  FIN_CATEGORIES.forEach(function(cat) {
+    var isOpen = _finCatSelected.catId === cat.id
+    html += '<div style="border-bottom:1px solid var(--cream3);"><div onclick="finToggleCat(\'' + cat.id + '\')" style="display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;background:' + (isOpen?cat.bg:'none') + ';"><span style="font-size:13px;color:var(--brown);flex:1;">' + cat.label + '</span><span style="font-size:10px;color:var(--brown4);">' + (isOpen?'▲':'▼') + '</span></div>'
+    if (isOpen) cat.children.forEach(function(sub) {
+      var isSel = _finCatSelected.subId === sub.id
+      html += '<div onclick="finSelectSub(\'' + cat.id + '\',\'' + sub.id + '\')" style="display:flex;align-items:center;gap:8px;padding:7px 12px 7px 32px;cursor:pointer;background:' + (isSel?cat.bg:'none') + ';border-top:1px solid var(--cream3);"><span style="font-size:12px;color:' + (isSel?cat.color:'var(--brown3)') + ';font-weight:' + (isSel?'500':'400') + ';">' + sub.label + '</span>' + (isSel?'<span style="margin-left:auto;font-size:12px;color:'+cat.color+';">✓</span>':'') + '</div>'
+    })
+    html += '</div>'
+  })
+  document.getElementById('fin-category-selector').innerHTML = html
+}
+function finToggleCat(catId) { _finCatSelected = _finCatSelected.catId === catId ? {catId:null,subId:null} : {catId,subId:null}; document.getElementById('fin-category-val').value=_finCatSelected.catId||''; document.getElementById('fin-subcategory-val').value=''; buildCategorySelector() }
+function finSelectSub(catId,subId) { _finCatSelected={catId,subId}; document.getElementById('fin-category-val').value=catId; document.getElementById('fin-subcategory-val').value=subId; buildCategorySelector() }
+
+function openFinanceTxModal(txId) {
+  finState.editingTxId = txId || null
+  _finCatSelected = { catId: null, subId: null }
+  var now      = new Date()
+  var dateStr  = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0')
+  var accounts = Object.keys(finState.data?.balances || { Wallet:1, EasyCard:1, Savings:1 })
+  var acctOpts = accounts.map(a => `<option value="${a}">${a}</option>`).join('')
+  document.getElementById('fin-account').innerHTML    = acctOpts
+  document.getElementById('fin-to-account').innerHTML = acctOpts
+
+  if (txId) {
+    var tx = finState.allTxs.find(t => t.id === txId)
+    if (!tx) return
+    document.getElementById('fin-tx-modal-title').textContent = 'Edit transaction'
+    document.getElementById('fin-desc').value     = tx.description || ''
+    document.getElementById('fin-vendor').value   = tx.vendor      || ''
+    document.getElementById('fin-amount').value   = tx.amount      || ''
+    document.getElementById('fin-type').value     = tx.type        || 'debit'
+    document.getElementById('fin-account').value  = tx.account     || accounts[0]
+    document.getElementById('fin-to-account').value = tx.to_account || accounts[0]
+    document.getElementById('fin-note').value     = tx.note        || ''
+    document.getElementById('fin-currency').value = tx.currency    || 'TWD'
+    document.getElementById('fin-ledger').value   = tx.ledger      || ''
+    var d = new Date(tx.date)
+    document.getElementById('fin-date').value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
+    _finCatSelected = { catId: tx.category || null, subId: tx.subcategory || null }
+    document.getElementById('fin-category-val').value    = tx.category    || ''
+    document.getElementById('fin-subcategory-val').value = tx.subcategory || ''
+    document.getElementById('fin-tx-delete-btn').style.display = 'inline-flex'
+  } else {
+    document.getElementById('fin-tx-modal-title').textContent = 'Add transaction'
+    ;['fin-desc','fin-vendor','fin-note','fin-ledger'].forEach(id => document.getElementById(id).value = '')
+    document.getElementById('fin-amount').value   = ''
+    document.getElementById('fin-type').value     = 'debit'
+    document.getElementById('fin-currency').value = finState.displayCurrency || 'TWD'
+    document.getElementById('fin-date').value     = dateStr
+    document.getElementById('fin-tx-delete-btn').style.display = 'none'
+  }
+  finTypeChanged()
+  buildCategorySelector()
+  document.getElementById('fin-tx-modal').classList.add('open')
+  setTimeout(() => document.getElementById('fin-desc').focus(), 100)
+}
+
+function finTypeChanged() {
+  document.getElementById('fin-to-account-group').style.display =
+    document.getElementById('fin-type').value === 'transfer' ? 'block' : 'none'
+}
+
+async function saveFinTx() {
+  var desc      = document.getElementById('fin-desc').value.trim()
+  var amountRaw = parseFloat(document.getElementById('fin-amount').value)
+  if (!desc)               { toast('Description required'); return }
+  if (isNaN(amountRaw) || amountRaw <= 0) { toast('Valid amount required'); return }
+
+  var dp      = document.getElementById('fin-date').value.split('-')
+  var dateTs  = new Date(parseInt(dp[0]), parseInt(dp[1])-1, parseInt(dp[2]), 12, 0, 0).toISOString()
+
+  var tx = {
+    id:          finState.editingTxId || undefined,
+    description: desc,
+    vendor:      document.getElementById('fin-vendor').value.trim()   || null,
+    amount:      amountRaw,
+    type:        document.getElementById('fin-type').value,
+    account:     document.getElementById('fin-account').value,
+    to_account:  document.getElementById('fin-to-account').value      || null,
+    date:        dateTs,
+    currency:    document.getElementById('fin-currency').value        || 'TWD',
+    category:    document.getElementById('fin-category-val').value    || null,
+    subcategory: document.getElementById('fin-subcategory-val').value || null,
+    note:        document.getElementById('fin-note').value.trim()     || null,
+    ledger:      document.getElementById('fin-ledger').value.trim()   || null
+  }
+
+  var btn = document.querySelector('#fin-tx-modal .btn-primary')
+  btn.textContent = 'Saving...'; btn.disabled = true
+
+  const res = await POST('/finance/transactions', tx)
+  btn.textContent = 'Save'; btn.disabled = false
+
+  if (res?.success) {
+    document.getElementById('fin-tx-modal').classList.remove('open')
+    toast(res.message || 'Saved')
+    await loadFinanceData()
+  } else toast('Error: ' + res?.error)
+}
+
+async function deleteFinTx() {
+  if (!finState.editingTxId) return
+  if (!confirm('Delete this transaction?')) return
+  const res = await DELETE('/finance/transactions/' + finState.editingTxId)
+  if (res?.success) {
+    document.getElementById('fin-tx-modal').classList.remove('open')
+    toast(res.message || 'Deleted')
+    await loadFinanceData()
+  } else toast('Error: ' + res?.error)
+}
+
+function openOutstandingModal(itemId) {
+  finState.editingOutId = itemId || null
+  var now     = new Date()
+  var dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0')
+  if (itemId) {
+    var item = (finState.data?.outstanding || []).find(i => i.id === itemId)
+    if (!item) return
+    document.getElementById('outstanding-modal-title').textContent = 'Edit outstanding'
+    document.getElementById('out-person').value   = item.person   || ''
+    document.getElementById('out-note').value     = item.note     || ''
+    document.getElementById('out-amount').value   = item.amount   || ''
+    document.getElementById('out-currency').value = item.currency || 'TWD'
+    document.getElementById('out-type').value     = item.type     || 'credit'
+    var d = new Date(item.date)
+    document.getElementById('out-date').value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
+    document.getElementById('out-delete-btn').style.display  = 'inline-flex'
+    document.getElementById('out-settle-btn').style.display  = 'inline-flex'
+  } else {
+    document.getElementById('outstanding-modal-title').textContent = 'Add outstanding'
+    ;['out-person','out-note','out-amount'].forEach(id => document.getElementById(id).value = '')
+    document.getElementById('out-currency').value = finState.displayCurrency || 'TWD'
+    document.getElementById('out-type').value     = 'credit'
+    document.getElementById('out-date').value     = dateStr
+    document.getElementById('out-delete-btn').style.display  = 'none'
+    document.getElementById('out-settle-btn').style.display  = 'none'
+  }
+  document.getElementById('outstanding-modal').classList.add('open')
+  setTimeout(() => document.getElementById('out-person').focus(), 100)
+}
+
+async function saveOutstanding() {
+  var person = document.getElementById('out-person').value.trim()
+  var amount = parseFloat(document.getElementById('out-amount').value)
+  if (!person)              { toast('Person required'); return }
+  if (isNaN(amount)||amount<=0) { toast('Valid amount required'); return }
+  var dp     = document.getElementById('out-date').value.split('-')
+  var dateTs = new Date(parseInt(dp[0]),parseInt(dp[1])-1,parseInt(dp[2]),12,0,0).toISOString()
+  const res  = await POST('/finance/outstanding', { id:finState.editingOutId||undefined, person, note:document.getElementById('out-note').value.trim()||null, amount, currency:document.getElementById('out-currency').value, type:document.getElementById('out-type').value, date:dateTs })
+  if (res?.success) { document.getElementById('outstanding-modal').classList.remove('open'); toast(res.message||'Saved'); loadFinanceData() }
+  else toast('Error: ' + res?.error)
+}
+
+async function settleOutstanding() {
+  if (!finState.editingOutId) return
+  const res = await POST('/finance/outstanding/' + finState.editingOutId + '/settle')
+  if (res?.success) { document.getElementById('outstanding-modal').classList.remove('open'); toast(res.message||'Settled'); loadFinanceData() }
+  else toast('Error: ' + res?.error)
+}
+
+async function deleteOutstanding() {
+  if (!finState.editingOutId||!confirm('Delete?')) return
+  const res = await DELETE('/finance/outstanding/' + finState.editingOutId)
+  if (res?.success) { document.getElementById('outstanding-modal').classList.remove('open'); toast('Deleted'); loadFinanceData() }
+  else toast('Error: ' + res?.error)
+}
+
+// ════════════════════════════════════════════════════════════
+//  ORBIT
+// ════════════════════════════════════════════════════════════
+var orbitHistory = [], orbitOpen = false
+
+function openOrbit()  { var p=document.getElementById('orbit-popup'); p.style.display='flex'; orbitOpen=true; if(!orbitHistory.length) orbitAddBubble('axis','What do you need?'); setTimeout(()=>document.getElementById('orbit-input').focus(),100) }
+function closeOrbit() { document.getElementById('orbit-popup').style.display='none'; orbitOpen=false }
+
+function orbitAddBubble(who, text) {
+  var msg = document.createElement('div')
+  msg.style.cssText = who==='axis'
+    ? 'background:var(--brown);border-radius:12px 12px 4px 12px;padding:9px 12px;font-size:12px;color:var(--cream);align-self:flex-start;max-width:85%;line-height:1.5;white-space:pre-wrap;'
+    : 'background:var(--cream2);border-radius:12px 12px 12px 4px;padding:9px 12px;font-size:12px;color:var(--brown);align-self:flex-end;max-width:85%;border:1px solid var(--cream3);'
+  msg.textContent = text
+  var c = document.getElementById('orbit-messages')
+  c.appendChild(msg); c.scrollTop = c.scrollHeight
+  orbitHistory.push({ who, text })
+  return msg
+}
+
+function orbitAddThinking() {
+  var msg = orbitAddBubble('axis', '...')
+  msg.id = 'orbit-thinking'
+  msg.style.opacity = '0.6'
+  return msg
+}
+
+document.getElementById('orbit-input').addEventListener('keydown', e => { if (e.key==='Enter') orbitSend() })
+
+async function orbitSend() {
+  var input = document.getElementById('orbit-input')
+  var msg   = input.value.trim()
+  if (!msg) return
+  input.value = ''; input.disabled = true
+  orbitAddBubble('user', msg)
+  var thinking = orbitAddThinking()
+
+  var context = {
+    todo:      state.data?.todo      || [],
+    recurring: state.data?.recurring || [],
+    tagKey:    state.data?.tagKey    || {},
+    timezone:  Intl.DateTimeFormat().resolvedOptions().timeZone
+  }
+
+  const r = await POST('/orbit/chat', { message: msg, context })
+  input.disabled = false
+  thinking.remove()
+
+  if (!r) return
+  orbitAddBubble('axis', r.message || 'Done.')
+
+  // Handle actions
+  if (r.action && r.actionData) {
+    await handleOrbitAction(r.action, r.actionData)
+  }
+}
+
+async function handleOrbitAction(action, data) {
+  var res
+  switch (action) {
+    case 'addTask':
+      res = await POST('/tasks', data)
+      if (res?.success) { toast('Task added'); loadData(true) }
+      break
+
+    case 'addTrackerEvent':
+      // Tracker events are stored as tasks with a time
+      res = await POST('/tasks', {
+        name:     data.name,
+        due_date: data.date,
+        due_time: data.start_time,
+        tag:      data.tag || null,
+        note:     data.note || null
+      })
+      if (res?.success) { toast('Added to calendar'); loadData(true) }
+      break
+
+    case 'deleteTask':
+      res = await DELETE('/tasks/' + data.id)
+      if (res?.success) { toast('Deleted'); loadData(true) }
+      break
+
+    case 'completeTask':
+      res = await POST('/tasks/' + data.id + '/complete')
+      if (res?.success) { toast('Done'); loadData(true) }
+      break
+
+    case 'uncompleteTask':
+      res = await POST('/tasks/' + data.id + '/uncomplete')
+      if (res?.success) { toast('Unmarked'); loadData(true) }
+      break
+
+    case 'addFinanceTx':
+      res = await POST('/finance/transactions', data)
+      if (res?.success) { toast(res.message || 'Transaction added'); loadFinanceData() }
+      else toast('Error: ' + res?.error)
+      break
+
+    case 'addOutstanding':
+      res = await POST('/finance/outstanding', data)
+      if (res?.success) { toast(res.message || 'Outstanding added'); loadFinanceData() }
+      break
+
+    case 'settleOutstanding':
+      // Find by person name
+      var item = (finState.data?.outstanding || []).find(i =>
+        i.person.toLowerCase().includes((data.person||'').toLowerCase()) && !i.settled
+      )
+      if (item) {
+        res = await POST('/finance/outstanding/' + item.id + '/settle')
+        if (res?.success) { toast(res.message || 'Settled'); loadFinanceData() }
+      } else {
+        orbitAddBubble('axis', "Couldn't find that outstanding item.")
+      }
+      break
+  }
+}
+
+document.getElementById('orbit-nav-btn').addEventListener('click',    e => { e.stopPropagation(); orbitOpen ? closeOrbit() : openOrbit() })
+document.getElementById('orbit-mobile-btn').addEventListener('click', ()  => { orbitOpen ? closeOrbit() : openOrbit() })
+
+// ════════════════════════════════════════════════════════════
+//  NLP MODAL
+// ════════════════════════════════════════════════════════════
+var nlpParsed = null
+
+function openNlpModal() {
+  nlpParsed = null
+  document.getElementById('nlp-input-screen').style.display  = 'block'
+  document.getElementById('nlp-review-screen').style.display = 'none'
+  document.getElementById('nlp-chat').innerHTML = '<div class="nlp-chat-bubble-axis">What do you need to add?</div>'
+  document.getElementById('nlp-input').value = ''
+  document.getElementById('nlp-modal').classList.add('open')
+  setTimeout(() => document.getElementById('nlp-input').focus(), 100)
+}
+
+document.getElementById('nlp-input').addEventListener('keydown', e => { if (e.key==='Enter') nlpSend() })
+
+async function nlpSend() {
+  var input = document.getElementById('nlp-input').value.trim()
+  if (!input) return
+  var chat = document.getElementById('nlp-chat')
+  var ub = document.createElement('div'); ub.className = 'nlp-chat-bubble-user'; ub.textContent = input; chat.appendChild(ub)
+  var tb = document.createElement('div'); tb.className = 'nlp-chat-bubble-axis'; tb.textContent = 'Parsing...'; chat.appendChild(tb)
+  chat.scrollTop = chat.scrollHeight
+  document.getElementById('nlp-input').value = ''
+  document.getElementById('nlp-input').disabled = true
+
+  const parsed = await POST('/orbit/parse', { input, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })
+  document.getElementById('nlp-input').disabled = false
+  if (!parsed) { tb.textContent = "Couldn't parse that. Try again?"; return }
+  tb.textContent = parsed.summary || 'Got it.'
+  chat.scrollTop = chat.scrollHeight
+  nlpParsed = parsed
+  setTimeout(() => showNlpReview(parsed), 600)
+}
+
+function showNlpReview(p) {
+  document.getElementById('nlp-input-screen').style.display  = 'none'
+  document.getElementById('nlp-review-screen').style.display = 'block'
+  document.getElementById('nlp-summary-msg').textContent     = p.summary || ''
+  var fields = ''
+  fields += nlpFieldRow('Task', p.taskName || '—', 'taskName')
+  fields += nlpFieldRow('Due',  p.dueDate  || '—', 'dueDate')
+  fields += nlpFieldRow('Time', p.startTime ? (p.startTime + (p.endTime ? ' – '+p.endTime : '')) : '—', 'startTime')
+  fields += nlpFieldRow('Tag',  p.tag      || 'None', 'tag')
+  fields += nlpFieldRow('Note', p.note     || '—', 'note')
+  document.getElementById('nlp-fields').innerHTML = fields
+}
+
+function nlpFieldRow(label, val, key) {
+  return '<div class="nlp-field-row"><span class="nlp-field-label">' + label + '</span><span class="nlp-field-val" id="nlp-val-' + key + '">' + esc(String(val||'')) + '</span><span class="nlp-field-edit" onclick="nlpEditField(\'' + key + '\')">edit</span></div>'
+}
+function nlpEditField(key) {
+  var el = document.getElementById('nlp-val-' + key); if (!el) return
+  var val = prompt('Edit ' + key + ':', nlpParsed[key] || '')
+  if (val === null) return
+  nlpParsed[key] = val; el.textContent = val
+}
+function nlpBack() { document.getElementById('nlp-input-screen').style.display='block'; document.getElementById('nlp-review-screen').style.display='none' }
+
+async function nlpConfirm() {
+  if (!nlpParsed) return
+  var p   = nlpParsed
+  var btn = document.querySelector('#nlp-review-screen .btn-primary')
+  btn.textContent = 'Saving...'; btn.disabled = true
+
+  var body = {
+    name:     p.taskName,
+    due_date: p.dueDate && p.dueDate !== '—' ? p.dueDate : null,
+    due_time: p.startTime || null,
+    tag:      p.tag       || null,
+    note:     p.note      || null
+  }
+
+  const res = await POST('/tasks', body)
+  btn.textContent = 'Confirm & save'; btn.disabled = false
+  document.getElementById('nlp-modal').classList.remove('open')
+  if (res?.success) { toast('Task added'); loadData(true) }
+  else toast('Error: ' + res?.error)
+}
+
+// ════════════════════════════════════════════════════════════
+//  INACTIVITY LOCK
+// ════════════════════════════════════════════════════════════
+function lockApp()              { clearJWT(); showAuthOverlay() }
+function startInactivityTimer() { clearInactivityTimer(); inactivityTimer = setTimeout(lockApp, INACTIVITY_MS) }
+function resetInactivityTimer() { if (state.unlocked) startInactivityTimer() }
+function clearInactivityTimer() { if (inactivityTimer) { clearTimeout(inactivityTimer); inactivityTimer = null } }
+;['click','keydown','mousemove','touchstart','scroll'].forEach(evt => document.addEventListener(evt, resetInactivityTimer, { passive:true }))
+
+// ════════════════════════════════════════════════════════════
+//  VIEW SWITCHING
+// ════════════════════════════════════════════════════════════
+function switchView(v) {
+  state.view = v
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'))
+  document.getElementById('view-' + v).classList.add('active')
+  document.querySelectorAll('.nav-item[data-view]').forEach(el  => el.classList.toggle('active',  el.dataset.view === v))
+  document.querySelectorAll('.mobile-tab[data-view]').forEach(el => el.classList.toggle('active', el.dataset.view === v))
+  if (window.innerWidth <= 768) { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open') }
+  if (v === 'whiteboard') setTimeout(() => { if (!wb.initialized) initWhiteboard() }, 50)
+  if (v === 'overview')   setGreeting()
+  if (v === 'finance')    loadFinanceData()
+  if (v === 'trash')      renderTrash()
+}
+
+document.querySelectorAll('.nav-item[data-view]').forEach(el  => el.addEventListener('click', () => switchView(el.dataset.view)))
+document.querySelectorAll('.mobile-tab[data-view]').forEach(el => el.addEventListener('click', () => switchView(el.dataset.view)))
+document.getElementById('menu-toggle').addEventListener('click', () => { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebar-overlay').classList.toggle('open') })
+document.getElementById('sidebar-overlay').addEventListener('click', () => { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open') })
+document.getElementById('refresh-btn').addEventListener('click', () => loadData(false))
+document.getElementById('nlp-modal').addEventListener('click',   function(e) { if (e.target===this) this.classList.remove('open') })
+document.getElementById('fin-tx-modal').addEventListener('click',     function(e) { if (e.target===this) this.classList.remove('open') })
+document.getElementById('outstanding-modal').addEventListener('click', function(e) { if (e.target===this) this.classList.remove('open') })
+window.addEventListener('online',  () => { document.getElementById('offline-banner').style.display='none'; loadData(true) })
+window.addEventListener('offline', () => { document.getElementById('offline-banner').style.display='block' })
+
+// ── MOBILE MENU TOGGLE ────────────────────────────────────────
+;(function() {
+  var btn = document.getElementById('menu-toggle')
+  function update() { btn.style.display = window.innerWidth <= 768 ? 'flex' : 'none' }
+  update(); window.addEventListener('resize', update)
+})()
+
+// ── WHITEBOARD (unchanged from original) ─────────────────────
+var wb = { canvas:null, ctx:null, drawing:false, color:'#3d342a', drawSize:4, eraseSize:30, mode:'draw', lastX:0, lastY:0, saveTimer:null, initialized:false, zoom:1.0 }
+
+function initWhiteboard() {
+  var CANVAS_W=2400, CANVAS_H=1800, dpr=window.devicePixelRatio||1
+  if (!document.getElementById('wb-scroll')) {
+    var scroll=document.createElement('div'); scroll.id='wb-scroll'; scroll.style.cssText='width:100%;height:560px;overflow:auto;border-radius:12px;border:1px solid var(--cream3);background:var(--cream);position:relative;'
+    var inner=document.createElement('div'); inner.id='wb-inner'; inner.style.cssText='position:relative;transform-origin:0 0;width:'+CANVAS_W+'px;height:'+CANVAS_H+'px;'
+    var canvas=document.createElement('canvas'); canvas.id='wb-canvas2'; canvas.style.cssText='display:block;cursor:crosshair;touch-action:none;'
+    canvas.width=CANVAS_W*dpr; canvas.height=CANVAS_H*dpr; canvas.style.width=CANVAS_W+'px'; canvas.style.height=CANVAS_H+'px'
+    inner.appendChild(canvas); scroll.appendChild(inner)
+    document.getElementById('wb-canvas').parentElement.insertBefore(scroll,document.getElementById('wb-canvas'))
+    wb.canvas=canvas
+  } else { wb.canvas=document.getElementById('wb-canvas2') }
+  wb.ctx=wb.canvas.getContext('2d'); wb.ctx.scale(dpr,dpr); wb.ctx.lineCap='round'; wb.ctx.lineJoin='round'; wb.initialized=true
+
+  var saved=localStorage.getItem('axis-whiteboard')
+  if (saved) { var img=new Image(); img.onload=function(){ wb.ctx.drawImage(img,0,0,CANVAS_W,CANVAS_H) }; img.src=saved }
+
+  function getPos(e) { var rect=wb.canvas.getBoundingClientRect(),clientX=e.touches?e.touches[0].clientX:e.clientX,clientY=e.touches?e.touches[0].clientY:e.clientY; return {x:(clientX-rect.left)/wb.zoom,y:(clientY-rect.top)/wb.zoom} }
+  function getBgColor() { return document.documentElement.getAttribute('data-theme')==='dark'?'#1e1a16':'#faf7f2' }
+  function saveBoard() { clearTimeout(wb.saveTimer); wb.saveTimer=setTimeout(function(){ localStorage.setItem('axis-whiteboard',wb.canvas.toDataURL()) },800) }
+
+  wb.canvas.addEventListener('mousedown',function(e){ if(wb.mode==='text'){var pos=getPos(e),text=document.getElementById('wb-text-input').value.trim();if(!text)return;wb.ctx.font='16px DM Sans,sans-serif';wb.ctx.fillStyle=wb.color;wb.ctx.fillText(text,pos.x,pos.y);saveBoard();return}wb.drawing=true;var pos=getPos(e);wb.lastX=pos.x;wb.lastY=pos.y;wb.ctx.beginPath();var r=wb.mode==='erase'?wb.eraseSize/2:wb.drawSize/2;wb.ctx.arc(pos.x,pos.y,r,0,Math.PI*2);wb.ctx.fillStyle=wb.mode==='erase'?getBgColor():wb.color;wb.ctx.fill() })
+  wb.canvas.addEventListener('mousemove',function(e){ if(!wb.drawing)return;var pos=getPos(e);wb.ctx.beginPath();wb.ctx.moveTo(wb.lastX,wb.lastY);wb.ctx.lineTo(pos.x,pos.y);wb.ctx.strokeStyle=wb.mode==='erase'?getBgColor():wb.color;wb.ctx.lineWidth=wb.mode==='erase'?wb.eraseSize:wb.drawSize;wb.ctx.stroke();wb.lastX=pos.x;wb.lastY=pos.y;saveBoard() })
+  function stopDraw(){ if(!wb.drawing)return;wb.drawing=false;localStorage.setItem('axis-whiteboard',wb.canvas.toDataURL()) }
+  wb.canvas.addEventListener('mouseup',stopDraw); wb.canvas.addEventListener('mouseleave',stopDraw)
+  wb.canvas.addEventListener('touchstart',function(e){e.preventDefault();wb.drawing=true;var pos=getPos(e);wb.lastX=pos.x;wb.lastY=pos.y},{passive:false})
+  wb.canvas.addEventListener('touchmove',function(e){e.preventDefault();if(!wb.drawing)return;var pos=getPos(e);wb.ctx.beginPath();wb.ctx.moveTo(wb.lastX,wb.lastY);wb.ctx.lineTo(pos.x,pos.y);wb.ctx.strokeStyle=wb.mode==='erase'?getBgColor():wb.color;wb.ctx.lineWidth=wb.mode==='erase'?wb.eraseSize:wb.drawSize;wb.ctx.stroke();wb.lastX=pos.x;wb.lastY=pos.y;saveBoard()},{passive:false})
+  wb.canvas.addEventListener('touchend',function(e){e.preventDefault();stopDraw()})
+
+  document.getElementById('wb-zoom-in').onclick =function(){ wb.zoom=Math.min(3,wb.zoom+0.1); document.getElementById('wb-inner').style.transform='scale('+wb.zoom+')'; document.getElementById('wb-zoom-label').textContent=Math.round(wb.zoom*100)+'%' }
+  document.getElementById('wb-zoom-out').onclick=function(){ wb.zoom=Math.max(0.25,wb.zoom-0.1); document.getElementById('wb-inner').style.transform='scale('+wb.zoom+')'; document.getElementById('wb-zoom-label').textContent=Math.round(wb.zoom*100)+'%' }
+}
+
+function setWbMode(mode) { wb.mode=mode; document.getElementById('wb-mode-draw').className='btn '+(mode==='draw'?'btn-primary':'btn-secondary'); document.getElementById('wb-mode-text').className='btn '+(mode==='text'?'btn-primary':'btn-secondary'); document.getElementById('wb-mode-erase').className='btn '+(mode==='erase'?'btn-primary':'btn-secondary'); document.getElementById('wb-text-input').style.display=mode==='text'?'block':'none' }
+document.getElementById('wb-mode-draw').addEventListener('click',  ()=>setWbMode('draw'))
+document.getElementById('wb-mode-text').addEventListener('click',  ()=>setWbMode('text'))
+document.getElementById('wb-mode-erase').addEventListener('click', ()=>setWbMode('erase'))
+document.querySelectorAll('.wb-color').forEach(el=>el.addEventListener('click',function(){ wb.color=el.dataset.color; setWbMode('draw'); document.querySelectorAll('.wb-color').forEach(c=>c.style.border='2px solid transparent'); el.style.border='2px solid var(--brown3)'; document.getElementById('wb-custom-color').value=el.dataset.color }))
+document.getElementById('wb-custom-color').addEventListener('input',function(){ wb.color=this.value; setWbMode('draw') })
+document.getElementById('wb-draw-size').addEventListener('change', function(){ wb.drawSize=parseInt(this.value) })
+document.getElementById('wb-erase-size').addEventListener('change',function(){ wb.eraseSize=parseInt(this.value) })
+document.getElementById('wb-clear').addEventListener('click',function(){ if(!confirm('Clear the whiteboard?'))return; if(wb.ctx)wb.ctx.clearRect(0,0,2400,1800); localStorage.removeItem('axis-whiteboard'); toast('Whiteboard cleared') })
+
+// ════════════════════════════════════════════════════════════
+//  FAVICON
+// ════════════════════════════════════════════════════════════
+;(function setFavicon() {
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><rect width="52" height="52" rx="10" fill="%231e1a16"/><path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="%23BA7517" stroke-width="2.5" fill="none" stroke-linejoin="round"/><circle cx="26" cy="26" r="4" fill="%23BA7517"/></svg>'
+  var url='data:image/svg+xml,'+svg
+  document.querySelectorAll('link[rel*="icon"]').forEach(e=>e.parentNode.removeChild(e))
+  ;['shortcut icon','icon'].forEach(function(rel){ var link=document.createElement('link'); link.rel=rel; link.type='image/svg+xml'; link.href=url; document.head.appendChild(link) })
+})()
+
+// ════════════════════════════════════════════════════════════
+//  INIT — check JWT first, then show auth or load data
+// ════════════════════════════════════════════════════════════
+switchView('calendar')
+if (isJWTValid()) {
+  state.unlocked = true
+  document.getElementById('loading').style.display = 'none'
+  document.getElementById('app').classList.add('unlocked')
+  loadData(false)
+  startInactivityTimer()
+} else {
+  clearJWT()
+  document.getElementById('loading').style.display = 'none'
+  showAuthOverlay()
+}
+</script>
+</body>
+</html>
