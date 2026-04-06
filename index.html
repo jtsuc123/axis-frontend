@@ -800,11 +800,12 @@ async function loadData(silent) {
     } else { document.getElementById('loading').style.display='flex' }
   }
   try {
-    const [tasksRes, recurringRes] = await Promise.all([GET('/tasks'), GET('/tasks/recurring')])
+    const [tasksRes, recurringRes, trackerRes] = await Promise.all([GET('/tasks'), GET('/tasks/recurring'), GET('/tracker')])
     if (!tasksRes) return
     state.data = {
-      todo:      tasksRes.tasks       || [],
+      todo:      tasksRes.tasks        || [],
       recurring: recurringRes?.recurring || [],
+      tracker:   trackerRes?.events     || [],
       trash:     [],
       tagKey:    {}
     }
@@ -995,6 +996,35 @@ function renderAgenda() {
     var key=d.getTime()
     if(!tasksByDate[key]) tasksByDate[key]=[]
     tasksByDate[key].push(task)
+  })
+  ;(state.data.tracker || []).forEach(function(ev) {
+    if (!ev.date) return
+    var d = new Date(typeof ev.date === 'number' ? ev.date : parseInt(ev.date))
+    d.setHours(0,0,0,0)
+    var key = d.getTime()
+    if (!tasksByDate[key]) tasksByDate[key] = []
+    var startTime = ev.minutes != null ? String(Math.floor(ev.minutes/60)).padStart(2,'0')+':'+String(ev.minutes%60).padStart(2,'0') : null
+    var endTime   = ev.end_minutes != null ? String(Math.floor(ev.end_minutes/60)).padStart(2,'0')+':'+String(ev.end_minutes%60).padStart(2,'0') : null
+    tasksByDate[key].push({id:ev.id,name:ev.value,time:startTime,end_time:endTime,note:ev.note,tag:null,isTracker:true})
+  })
+  var DAY_MAP={SUN:0,MON:1,TUE:2,WED:3,THU:4,FRI:5,SAT:6}
+  var rangeEnd=todayTs+(42+state.calOffset*44+44)*86400000
+  var rangeStart=todayTs+(-2+state.calOffset*44)*86400000
+  ;(state.data.recurring || []).forEach(function(r) {
+    if (!r.day || !r.start_time) return
+    var targetDow=DAY_MAP[r.day]
+    if (targetDow==null) return
+    var rStart=r.start_date?parseInt(r.start_date):todayTs
+    var rEnd=r.end_date?parseInt(r.end_date):rangeEnd
+    var cursor=new Date(Math.max(rangeStart,rStart)); cursor.setHours(0,0,0,0)
+    while(cursor.getTime()<=Math.min(rangeEnd,rEnd)){
+      if(cursor.getDay()===targetDow){
+        var key=cursor.getTime()
+        if(!tasksByDate[key]) tasksByDate[key]=[]
+        tasksByDate[key].push({id:r.id,name:r.task_name||r.value||r.tag,time:r.start_time,end_time:r.end_time,note:null,tag:r.tag,isRecurring:true})
+      }
+      cursor.setDate(cursor.getDate()+1)
+    }
   })
   var days=[]
   for(var i=-2+(state.calOffset*44);i<=42+(state.calOffset*44);i++){
@@ -1491,9 +1521,9 @@ async function handleOrbitAction(action,data){
       if(res?.success){toast('Task added');loadData(true)}else toast('Error: '+res?.error)
       break
     case 'addTrackerEvent':
-      res=await POST('/tasks',{name:data.name,due_date:data.date,due_time:data.start_time,tag:data.tag||null,note:data.note||null})
-      if(res?.success){toast('Added to calendar');loadData(true)}
-      break
+  res=await POST('/tracker',{name:data.name,date:data.date,start_time:data.start_time,end_time:data.end_time||null,tag:data.tag||null,note:data.note||null})
+  if(res?.success){toast('Added to calendar');loadData(true)}
+  break
     case 'deleteTask':
       res=await DELETE('/tasks/'+data.id)
       if(res?.success){toast('Deleted');loadData(true)}
