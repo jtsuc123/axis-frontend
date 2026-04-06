@@ -159,8 +159,8 @@ nav{flex:1;}
 }
 @media(min-width:769px) and (max-width:1024px){:root{--sidebar-w:160px;}}
 @media(min-width:769px) and (max-width:900px){:root{--sidebar-w:140px;}#main{padding:20px 18px;}}
-@keyframes orbitFlash{0%{box-shadow:0 0 0 0 rgba(186,117,23,0.7);}40%{box-shadow:0 0 0 8px rgba(186,117,23,0.25);}100%{box-shadow:0 0 0 0 rgba(186,117,23,0);}}
-.orbit-flash{animation:orbitFlash 1.4s ease-out;border-color:var(--amber) !important;}
+@keyframes orbitFlash{0%{box-shadow:0 0 0 0 rgba(186,117,23,0.85);background:rgba(186,117,23,0.12);}60%{box-shadow:0 0 0 10px rgba(186,117,23,0.15);}100%{box-shadow:0 0 0 0 rgba(186,117,23,0);background:transparent;}}
+.orbit-flash{animation:orbitFlash 0.75s ease-out;outline:2px solid var(--amber);outline-offset:2px;border-radius:8px;}
 </style>
 </head>
 <body>
@@ -915,7 +915,7 @@ function applyPendingHighlight() {
     if (!el) return
     el.scrollIntoView({ behavior:'smooth', block:'nearest' })
     el.classList.add('orbit-flash')
-    setTimeout(function(){ el.classList.remove('orbit-flash') }, 1600)
+    setTimeout(function(){ el.classList.remove('orbit-flash') }, 800)
   }, 120)
 }
 
@@ -986,7 +986,8 @@ function taskCardHTML(task,type){
 // ════════════════════════════════════════════════════════════
 async function completeTask(id)   { const r=await POST(`/tasks/${id}/complete`);   if(r?.success){toast('Marked done');loadData(true)}else toast('Error: '+r?.error) }
 async function uncompleteTask(id) { const r=await POST(`/tasks/${id}/uncomplete`); if(r?.success){toast('Unmarked');loadData(true)}else toast('Error: '+r?.error) }
-async function deleteTask(id)     { const r=await DELETE(`/tasks/${id}`);          if(r?.success){toast('Moved to trash');loadData(true)}else toast('Error: '+r?.error) }
+async function deleteTask(id)      { const r=await DELETE(`/tasks/${id}`);              if(r?.success){toast('Moved to trash');loadData(true)}else toast('Error: '+r?.error) }
+async function deleteRecurring(id) { const r=await DELETE(`/tasks/recurring/${id}`);  if(r?.success){toast('Recurring deleted');loadData(true)}else toast('Error: '+r?.error) }
 
 function toggleRecurringFields(){
   var on=document.getElementById('f-recurring').checked
@@ -1151,10 +1152,12 @@ function renderAgenda() {
         todos.forEach(function(task){
           var doneCls=task.completed?'text-decoration:line-through;opacity:0.4;':''
           var taskTime=task.time||task.due_time
-          html+='<div class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="openEditTask(\''+task.id+'\')">'
-          html+='<span style="font-size:10px;min-width:52px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;">'+(taskTime||'TODO')+'</span>'
+          var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
+          var delFn=task.isRecurring?'deleteRecurring':'deleteTask'
+          html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="'+(task.isRecurring||task.isTracker?'':'openEditTask(\''+task.id+'\')')+'">'
+          html+='<span style="font-size:10px;min-width:68px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'">'+esc(task.name)+'</span>'
-          html+='<button onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.5);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:auto;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
+          html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.5);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:auto;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
           html+='</div>'
         })
       }
@@ -1168,10 +1171,12 @@ function renderAgenda() {
         todos.forEach(function(task){
           var doneCls=task.completed?'text-decoration:line-through;color:var(--brown4);':''
           var taskTime=task.time||task.due_time
-          html+='<div class="agenda-event-row" style="cursor:pointer;" onclick="openEditTask(\''+task.id+'\')">'
-          html+='<span class="agenda-time" style="color:var(--brown4);min-width:60px;">'+(taskTime||'TODO')+'</span>'
+          var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
+          var delFn=task.isRecurring?'deleteRecurring':'deleteTask'
+          html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="cursor:pointer;" onclick="'+(task.isRecurring||task.isTracker?'':'openEditTask(\''+task.id+'\')')+'">'
+          html+='<span class="agenda-time" style="color:var(--brown4);min-width:80px;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'">'+esc(task.name)+'</span>'
-          html+='<button onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:4px;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
+          html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:4px;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
           html+='</div>'
         })
       }
@@ -1621,8 +1626,9 @@ async function handleOrbitAction(action,data){
       res=await POST('/tasks',{name:data.name||data.taskName,due_date:data.due_date||null,due_time:data.due_time||data.startTime||null,tag:data.tag||null,note:data.note||null,notify_before:data.notify_before||null})
       if(res?.success){
         toast('Task added')
-        state.pendingHighlight='task-card-'+res.task.id
-        switchView('overview')
+        state.pendingHighlight='cal-task-'+res.task.id
+        state.calOffset=0
+        switchView('calendar')
         loadData(true)
       } else toast('Error: '+res?.error)
       break
