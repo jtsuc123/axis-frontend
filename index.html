@@ -159,6 +159,8 @@ nav{flex:1;}
 }
 @media(min-width:769px) and (max-width:1024px){:root{--sidebar-w:160px;}}
 @media(min-width:769px) and (max-width:900px){:root{--sidebar-w:140px;}#main{padding:20px 18px;}}
+@keyframes orbitFlash{0%{box-shadow:0 0 0 0 rgba(186,117,23,0.7);}40%{box-shadow:0 0 0 8px rgba(186,117,23,0.25);}100%{box-shadow:0 0 0 0 rgba(186,117,23,0);}}
+.orbit-flash{animation:orbitFlash 1.4s ease-out;border-color:var(--amber) !important;}
 </style>
 </head>
 <body>
@@ -189,6 +191,7 @@ nav{flex:1;}
       <div class="token-grid" id="token-grid"></div>
       <div class="auth-attempts" id="auth-attempts"></div>
       <div class="auth-footer">Forgot your token? <a onclick="showResetScreen()">Send reset code →</a></div>
+      <div style="text-align:center;margin-top:10px;font-size:10px;color:var(--brown4);letter-spacing:0.06em;" id="auth-version"></div>
     </div>
     <div id="reset-screen">
       <div style="text-align:center;margin-bottom:20px;">
@@ -595,27 +598,47 @@ nav{flex:1;}
 // ════════════════════════════════════════════════════════════
 //  SERVICE WORKER + NOTIFICATIONS
 // ════════════════════════════════════════════════════════════
+function urlBase64ToUint8Array(b64) {
+  var padding = '='.repeat((4 - b64.length % 4) % 4)
+  var base64  = (b64 + padding).replace(/-/g,'+').replace(/_/g,'/')
+  var raw     = window.atob(base64)
+  var out     = new Uint8Array(raw.length)
+  for (var i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i)
+  return out
+}
+
 async function initNotifications() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) return
   if (Notification.permission === 'default') await Notification.requestPermission()
-  try { await navigator.serviceWorker.register('/sw.js') } catch(e) { console.warn('SW reg failed', e) }
+  if (Notification.permission !== 'granted') return
+  try {
+    var reg = await navigator.serviceWorker.register('/sw.js')
+    await navigator.serviceWorker.ready
+    var keyRes = await GET('/notifications/vapid-public-key')
+    if (!keyRes?.key) return
+    var sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(keyRes.key)
+    })
+    await POST('/notifications/subscribe', { subscription: sub.toJSON() })
+  } catch(e) { console.warn('Push setup failed', e) }
 }
 
 var scheduledNotifs = {}
 
+// Only schedules for tasks with explicit notify_before set — no default fallback
 function scheduleNotifications() {
   if (!state.data || Notification.permission !== 'granted') return
   Object.values(scheduledNotifs).forEach(t => clearTimeout(t))
   scheduledNotifs = {}
   var now = Date.now()
   ;(state.data.todo || []).forEach(function(task) {
-    if (!task.due_date || !task.time || task.completed) return
+    if (!task.due_date || !task.time || task.completed || task.notify_before == null) return
     var dd = typeof task.due_date === 'number' ? task.due_date : parseInt(task.due_date)
     var d  = new Date(dd)
     var parts = task.time.split(':')
     d.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0)
-    var notifyMins = task.notify_before != null ? task.notify_before : 10
-    var fireAt = d.getTime() - notifyMins * 60000
+    var fireAt = d.getTime() - task.notify_before * 60000
     var delay  = fireAt - now
     if (delay < 0 || delay > 7 * 86400000) return
     scheduledNotifs[task.id] = setTimeout(function() {
@@ -631,7 +654,8 @@ function scheduleNotifications() {
 // ════════════════════════════════════════════════════════════
 //  CONFIG
 // ════════════════════════════════════════════════════════════
-const API = 'https://axis-backend-tyy1.onrender.com/api'
+const API         = 'https://axis-backend-tyy1.onrender.com/api'
+const APP_VERSION = 'v1.1'
 
 // ════════════════════════════════════════════════════════════
 //  JWT HELPERS
@@ -669,7 +693,7 @@ const DELETE = path       => api('DELETE', path)
 var DECOY_POOL = ["phantom","archive","solstice","drift","ember","vault","lunar","tide","penelope","kate","mikayla","winnie","nadine","aaron","lolo","sophie","yancey","amber","julian","charlene","zoe","cheryl","ilyssa","cherry","abigail","copper","atlas","flint","haven","morse","cedar","prism","echo","north","signal","quill","iron","ridge","frost","grove","warden","cipher","delta","noble","slate","raven","stone","blade","mist","carve","tower","bloom","swift","dusk","coral","axiom","forge","pewter","justin","nike","qbi","jacinda","anna","stella","leia","maddie","orion","velvet","crimson","luna","felix","nova","jasper","ivy","sienna","zane","aria","knox","indigo","marble","zephyr","cleo","phoenix","briar","oscar","talia","rio","blaze","dahlia","cobalt","rhea","sage","titan","lyra","milo","onyx","piper","quinn","sol","theo","ursa","vance","wren","xena","yara","zuri","alder","bruno","cairo","delia","elara","finn","gaia","hugo","irene","juno","kira","leo","mira","nash","opal","paige","rex","skye","tess","vera","willow","xavier","yasmin","zack","basil","dante","elise","flora","gideon","hazel","isla","jett","kaia","logan","mabel","noel","olive","penny","quentin","rowan","selah","tristan","uma","valen","west","ximena","yosef","zelda","ash","brook","cliff","drew","evan","faye","gray","hope","ian","jade","kyle","lane","max","nina","otto","pearl","reid","shay","troy","vince","wade","yuki"]
 var INACTIVITY_MS = 30 * 60 * 1000
 var inactivityTimer = null
-var state = { data:null, view:'calendar', calOffset:0, editingTask:null, recurringOn:false, theme:localStorage.getItem('axis-theme')||'light', unlocked:false }
+var state = { data:null, view:'calendar', calOffset:0, editingTask:null, recurringOn:false, theme:localStorage.getItem('axis-theme')||'light', unlocked:false, pendingHighlight:null }
 var DAYS        = ['SUN','MON','TUE','WED','THU','FRI','SAT']
 var DAYS_FULL   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
 var MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -736,6 +760,7 @@ function showAuthOverlay() {
 
 function startAuthClock() {
   if (authClockInterval) clearInterval(authClockInterval)
+  document.getElementById('auth-version').textContent = 'Axis ' + APP_VERSION
   function tick() {
     var now=new Date(), h=now.getHours()
     document.getElementById('auth-greeting').textContent = h<12?'Good morning':h<18?'Good afternoon':'Good evening'
@@ -879,7 +904,20 @@ async function loadData(silent) {
 }
 
 setInterval(()=>{ if(navigator.onLine&&state.unlocked&&!document.hidden) loadData(true) },60000)
-function renderAll() { renderOverview(); renderAgenda(); renderTrash(); populateTagSelect(); scheduleNotifications() }
+function renderAll() { renderOverview(); renderAgenda(); renderTrash(); populateTagSelect(); scheduleNotifications(); applyPendingHighlight() }
+
+function applyPendingHighlight() {
+  if (!state.pendingHighlight) return
+  var id = state.pendingHighlight
+  state.pendingHighlight = null
+  setTimeout(function() {
+    var el = document.getElementById(id)
+    if (!el) return
+    el.scrollIntoView({ behavior:'smooth', block:'nearest' })
+    el.classList.add('orbit-flash')
+    setTimeout(function(){ el.classList.remove('orbit-flash') }, 1600)
+  }, 120)
+}
 
 // ════════════════════════════════════════════════════════════
 //  OVERVIEW
@@ -912,7 +950,7 @@ function renderOverview() {
     html+='<div class="task-group"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="section-label" style="margin-bottom:0;">No due date</div><span style="font-size:10px;font-weight:500;background:var(--cream2);color:var(--brown4);border:1px solid var(--cream3);border-radius:20px;padding:1px 8px;">'+cat.undated.length+'</span></div>'
     html+='<div style="background:var(--cream);border:1px solid var(--cream3);border-radius:10px;padding:4px 14px;">'
     cat.undated.forEach(function(task){
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cream3);cursor:pointer;" onclick="openEditTask(\''+task.id+'\')">'+AXIS_STAR_SVG
+      html+='<div id="task-card-'+task.id+'" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cream3);cursor:pointer;" onclick="openEditTask(\''+task.id+'\')">'+AXIS_STAR_SVG
       html+='<span style="font-size:13px;color:var(--brown);flex:1;">'+esc(task.name)+'</span>'
       html+='<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button></div></div>'
     })
@@ -933,7 +971,7 @@ function taskCardHTML(task,type){
   if(!task.due_date) dateStr='No due date'
   else if(type==='pastdue'){var dAgo=daysBetween(new Date(typeof task.due_date==='number'?task.due_date:parseInt(task.due_date)).setHours(0,0,0,0),today());dateStr=dAgo===1?'Yesterday':dAgo+' days ago'}
   else dateStr=new Date(typeof task.due_date==='number'?task.due_date:parseInt(task.due_date)).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric',weekday:'long'})
-  return '<div class="task-card" onclick="openEditTask(\''+task.id+'\')">'+
+  return '<div class="task-card" id="task-card-'+task.id+'" onclick="openEditTask(\''+task.id+'\')">'+
     '<div class="task-icon" style="background:'+c[0]+'"><div class="task-icon-inner" style="background:'+c[1]+'"></div></div>'+
     '<div class="task-info"><div class="task-name'+doneCls+'">'+esc(task.name)+'</div><div class="task-meta">'+dateStr+'</div></div>'+
     (hasNote?'<span class="note-pill"><span class="note-dot"></span>note</span>':'')+
@@ -1226,7 +1264,7 @@ async function loadFinanceData(){
   if(fxRes?.rates){finState.fxRates=fxRes.rates;updateFxLabel();renderFinanceAll()}
 }
 
-function renderFinanceAll(){renderBalances();renderCurrencyToggle();renderMonthTabs();renderMonthlySummary();renderTransactions();renderOutstanding();updateFxLabel()}
+function renderFinanceAll(){renderBalances();renderCurrencyToggle();renderMonthTabs();renderMonthlySummary();renderTransactions();renderOutstanding();updateFxLabel();applyPendingHighlight()}
 
 function renderBalances(){
   if(!finState.data) return
@@ -1355,7 +1393,7 @@ function renderTransactions(){
     var converted=finConvert(tx.amount,tx.currency),isCredit=tx.type==='credit',isTransfer=tx.type==='transfer'
     var amtColor=isCredit?'var(--green)':isTransfer?'var(--blue)':'var(--red)',amtPrefix=isCredit?'+':isTransfer?'⇄ ':'−'
     var catInfo=getCatInfo(tx.category,tx.subcategory)
-    html+='<div style="display:grid;grid-template-columns:1fr 110px;gap:8px;padding:8px 0;border-bottom:1px solid var(--cream3);align-items:start;cursor:pointer;" onclick="openFinanceTxModal(\''+tx.id+'\')">'+
+    html+='<div id="tx-row-'+tx.id+'" style="display:grid;grid-template-columns:1fr 110px;gap:8px;padding:8px 0;border-bottom:1px solid var(--cream3);align-items:start;cursor:pointer;" onclick="openFinanceTxModal(\''+tx.id+'\')">'+
       '<div><div style="font-size:13px;font-weight:500;color:var(--brown);">'+esc(tx.description)+'</div>'+
       (tx.vendor?'<div style="font-size:11px;color:var(--brown4);margin-top:1px;">'+esc(tx.vendor)+'</div>':'')+
       '<div style="margin-top:4px;display:flex;gap:5px;flex-wrap:wrap;">'+
@@ -1580,13 +1618,18 @@ async function handleOrbitAction(action,data){
   switch(action){
     case 'addTask':
     case 'reviewTask':
-      res=await POST('/tasks',{name:data.name||data.taskName,due_date:data.due_date||null,due_time:data.due_time||data.startTime||null,tag:data.tag||null,note:data.note||null})
-      if(res?.success){toast('Task added');loadData(true)}else toast('Error: '+res?.error)
+      res=await POST('/tasks',{name:data.name||data.taskName,due_date:data.due_date||null,due_time:data.due_time||data.startTime||null,tag:data.tag||null,note:data.note||null,notify_before:data.notify_before||null})
+      if(res?.success){
+        toast('Task added')
+        state.pendingHighlight='task-card-'+res.task.id
+        switchView('overview')
+        loadData(true)
+      } else toast('Error: '+res?.error)
       break
     case 'addTrackerEvent':
-  res=await POST('/tracker',{name:data.name,date:data.date,start_time:data.start_time,end_time:data.end_time||null,tag:data.tag||null,note:data.note||null})
-  if(res?.success){toast('Added to calendar');loadData(true)}
-  break
+      res=await POST('/tracker',{name:data.name,date:data.date,start_time:data.start_time,end_time:data.end_time||null,tag:data.tag||null,note:data.note||null})
+      if(res?.success){toast('Added to calendar');switchView('calendar');loadData(true)}
+      break
     case 'deleteTask':
       res=await DELETE('/tasks/'+data.id)
       if(res?.success){toast('Deleted');loadData(true)}
@@ -1601,7 +1644,12 @@ async function handleOrbitAction(action,data){
       break
     case 'addFinanceTx':
       res=await POST('/finance/transactions',data)
-      if(res?.success){toast(res.message||'Transaction added');loadFinanceData()}else toast('Error: '+res?.error)
+      if(res?.success){
+        toast(res.message||'Transaction added')
+        state.pendingHighlight='tx-row-'+res.transaction.id
+        switchView('finance')
+        await loadFinanceData()
+      } else toast('Error: '+res?.error)
       break
     case 'addOutstanding':
       res=await POST('/finance/outstanding',data)
@@ -1619,7 +1667,7 @@ async function handleOrbitAction(action,data){
     start_date: data.start_date || null,
     end_date:   data.end_date   || null
   })
-  if (res?.success) { toast('Recurring event added'); loadData(true) }
+  if (res?.success) { toast('Recurring event added'); switchView('calendar'); loadData(true) }
   else toast('Error: ' + res?.error)
   break
     case 'settleOutstanding':
