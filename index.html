@@ -484,6 +484,24 @@ nav{flex:1;}
     </div>
   </div>
 
+  <div class="modal-overlay" id="tracker-event-modal">
+    <div class="modal" style="max-width:400px;">
+      <h3>Edit Event</h3>
+      <div class="form-group"><label class="form-label">Event name *</label><input type="text" class="form-input" id="tev-name" placeholder="e.g. Gym, Lecture, Meeting"></div>
+      <div class="form-group"><label class="form-label">Date *</label><input type="date" class="form-input" id="tev-date"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Start time</label><input type="time" class="form-input" id="tev-start"></div>
+        <div class="form-group"><label class="form-label">End time</label><input type="time" class="form-input" id="tev-end"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Note</label><textarea class="form-textarea" id="tev-note" placeholder="Optional note..." style="min-height:60px;"></textarea></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="document.getElementById('tracker-event-modal').classList.remove('open')">Cancel</button>
+        <button class="btn btn-danger" id="tev-delete-btn" style="margin-right:auto;" onclick="deleteTrackerEvent()">Delete</button>
+        <button class="btn btn-primary" onclick="saveTrackerEvent()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="nlp-modal">
     <div class="modal" style="max-width:400px;">
       <div id="nlp-input-screen">
@@ -1163,7 +1181,8 @@ function renderAgenda() {
           var taskTime=task.time||task.due_time
           var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
           var delFn=task.isRecurring?'deleteRecurring':'deleteTask'
-          html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="'+(task.isRecurring||task.isTracker?'':'openEditTask(\''+task.id+'\')')+'">'
+          var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':task.isRecurring?'':('openEditTask(\''+task.id+'\')')
+          html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span style="font-size:10px;min-width:68px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'">'+esc(task.name)+'</span>'
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.5);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:auto;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
@@ -1182,7 +1201,8 @@ function renderAgenda() {
           var taskTime=task.time||task.due_time
           var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
           var delFn=task.isRecurring?'deleteRecurring':'deleteTask'
-          html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="cursor:pointer;" onclick="'+(task.isRecurring||task.isTracker?'':'openEditTask(\''+task.id+'\')')+'">'
+          var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':task.isRecurring?'':('openEditTask(\''+task.id+'\')')
+          html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span class="agenda-time" style="color:var(--brown4);min-width:80px;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'">'+esc(task.name)+'</span>'
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:4px;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
@@ -1520,8 +1540,11 @@ async function saveFinTx(){
   // Save correction for learning (only when something actually changed)
   if(finState.editingTxId){
     var original=finState.allTxs.find(t=>t.id===finState.editingTxId)
-    if(original&&(original.category!==tx.category||original.subcategory!==tx.subcategory||original.account!==tx.account||original.description!==tx.description)){
-      await POST('/orbit/examples',{user_input:null,bad_parse:{description:original.description,category:original.category,subcategory:original.subcategory,account:original.account,type:original.type},correction:{description:tx.description,category:tx.category,subcategory:tx.subcategory,account:tx.account,type:tx.type},source:'manual_edit'})
+    if(original){
+      tx._before=original
+      if(original.category!==tx.category||original.subcategory!==tx.subcategory||original.account!==tx.account||original.description!==tx.description){
+        await POST('/orbit/examples',{user_input:null,bad_parse:{description:original.description,category:original.category,subcategory:original.subcategory,account:original.account,type:original.type},correction:{description:tx.description,category:tx.category,subcategory:tx.subcategory,account:tx.account,type:tx.type},source:'manual_edit'})
+      }
     }
   }
   var btn=document.querySelector('#fin-tx-modal .btn-primary'); btn.textContent='Saving...'; btn.disabled=true
@@ -1587,6 +1610,45 @@ async function deleteOutstanding(){
   if(!finState.editingOutId||!confirm('Delete?')) return
   const res=await DELETE('/finance/outstanding/'+finState.editingOutId)
   if(res?.success){document.getElementById('outstanding-modal').classList.remove('open');toast('Deleted');loadFinanceData()}
+  else toast('Error: '+res?.error)
+}
+
+// ════════════════════════════════════════════════════════════
+//  TRACKER EVENT EDIT MODAL
+// ════════════════════════════════════════════════════════════
+var _editingTrackerEventId=null
+
+function openTrackerEventModal(id){
+  var ev=(state.data?.tracker||[]).find(e=>e.id===id); if(!ev) return
+  _editingTrackerEventId=id
+  document.getElementById('tev-name').value=ev.value||''
+  var d=new Date(typeof ev.date==='number'?ev.date:parseInt(ev.date))
+  document.getElementById('tev-date').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
+  var toTime=function(mins){if(mins==null)return '';return String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0')}
+  document.getElementById('tev-start').value=toTime(ev.minutes)
+  document.getElementById('tev-end').value=toTime(ev.end_minutes)
+  document.getElementById('tev-note').value=ev.note||''
+  document.getElementById('tracker-event-modal').classList.add('open')
+  setTimeout(()=>document.getElementById('tev-name').focus(),100)
+}
+
+async function saveTrackerEvent(){
+  var name=document.getElementById('tev-name').value.trim()
+  if(!name){toast('Name required');return}
+  var dp=document.getElementById('tev-date').value.split('-')
+  var dateTs=new Date(parseInt(dp[0]),parseInt(dp[1])-1,parseInt(dp[2]),12,0,0).getTime()
+  var body={name,date:dateTs,start_time:document.getElementById('tev-start').value||null,end_time:document.getElementById('tev-end').value||null,note:document.getElementById('tev-note').value.trim()||null}
+  var btn=document.querySelector('#tracker-event-modal .btn-primary'); btn.textContent='Saving...'; btn.disabled=true
+  const res=await PATCH('/tracker/'+_editingTrackerEventId,body)
+  btn.textContent='Save'; btn.disabled=false
+  if(res?.success){document.getElementById('tracker-event-modal').classList.remove('open');toast('Event updated');loadData(true)}
+  else toast('Error: '+res?.error)
+}
+
+async function deleteTrackerEvent(){
+  if(!_editingTrackerEventId||!confirm('Delete this event?')) return
+  const res=await DELETE('/tracker/'+_editingTrackerEventId)
+  if(res?.success){document.getElementById('tracker-event-modal').classList.remove('open');toast('Event deleted');loadData(true)}
   else toast('Error: '+res?.error)
 }
 
