@@ -505,12 +505,32 @@ nav{flex:1;}
     <div class="modal">
       <h3 id="modal-title">Add task</h3>
       <div class="form-group"><label class="form-label">Task name</label><input type="text" class="form-input" id="f-name" placeholder="What needs to be done?"></div>
-      <div class="form-row">
+      <div class="form-row" id="f-date-row">
         <div class="form-group"><label class="form-label">Due date</label><input type="date" class="form-input" id="f-date"></div>
         <div class="form-group"><label class="form-label">Time (optional)</label><input type="time" class="form-input" id="f-time"></div>
       </div>
       <div class="form-group"><label class="form-label">Tag</label><select class="form-select" id="f-tag"><option value="">No tag</option></select></div>
       <div class="form-group"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="f-note" placeholder="Additional details..."></textarea></div>
+      <div id="f-recurring-toggle-row" class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:2px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--brown2);">
+          <input type="checkbox" id="f-recurring" onchange="toggleRecurringFields()" style="accent-color:var(--brown);width:15px;height:15px;">
+          Recurring
+        </label>
+      </div>
+      <div id="f-recurring-fields" style="display:none;">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Frequency</label><select class="form-select" id="f-freq"><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option><option value="daily">Daily</option></select></div>
+          <div class="form-group"><label class="form-label">Day</label><select class="form-select" id="f-day"><option value="MON">Mon</option><option value="TUE">Tue</option><option value="WED">Wed</option><option value="THU">Thu</option><option value="FRI">Fri</option><option value="SAT">Sat</option><option value="SUN">Sun</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Start time</label><input type="time" class="form-input" id="f-start-time"></div>
+          <div class="form-group"><label class="form-label">End time (optional)</label><input type="time" class="form-input" id="f-end-time"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Start date</label><input type="date" class="form-input" id="f-start-date"></div>
+          <div class="form-group"><label class="form-label">End date</label><input type="date" class="form-input" id="f-end-date"></div>
+        </div>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
         <button class="btn btn-primary" id="modal-save">Save</button>
@@ -877,12 +897,27 @@ async function completeTask(id)   { const r=await POST(`/tasks/${id}/complete`);
 async function uncompleteTask(id) { const r=await POST(`/tasks/${id}/uncomplete`); if(r?.success){toast('Unmarked');loadData(true)}else toast('Error: '+r?.error) }
 async function deleteTask(id)     { const r=await DELETE(`/tasks/${id}`);          if(r?.success){toast('Moved to trash');loadData(true)}else toast('Error: '+r?.error) }
 
+function toggleRecurringFields(){
+  var on=document.getElementById('f-recurring').checked
+  document.getElementById('f-recurring-fields').style.display=on?'block':'none'
+  document.getElementById('f-date-row').style.display=on?'none':'flex'
+}
+
 function openAddModal() {
   state.editingTask=null
   document.getElementById('modal-title').textContent='Add task'
-  ;['f-name','f-note','f-time'].forEach(id=>document.getElementById(id).value='')
+  ;['f-name','f-note','f-time','f-start-time','f-end-time'].forEach(id=>document.getElementById(id).value='')
   document.getElementById('f-tag').value=''
-  var td=new Date(); document.getElementById('f-date').value=td.getFullYear()+'-'+String(td.getMonth()+1).padStart(2,'0')+'-'+String(td.getDate()).padStart(2,'0')
+  document.getElementById('f-recurring').checked=false
+  document.getElementById('f-recurring-fields').style.display='none'
+  document.getElementById('f-date-row').style.display='flex'
+  document.getElementById('f-recurring-toggle-row').style.display='flex'
+  var td=new Date()
+  var ds=td.getFullYear()+'-'+String(td.getMonth()+1).padStart(2,'0')+'-'+String(td.getDate()).padStart(2,'0')
+  document.getElementById('f-date').value=ds
+  document.getElementById('f-start-date').value=ds
+  var te=new Date(td); te.setMonth(te.getMonth()+6)
+  document.getElementById('f-end-date').value=te.getFullYear()+'-'+String(te.getMonth()+1).padStart(2,'0')+'-'+String(te.getDate()).padStart(2,'0')
   document.getElementById('task-modal').classList.add('open')
   setTimeout(()=>document.getElementById('f-name').focus(),100)
 }
@@ -897,6 +932,10 @@ function openEditTask(id) {
   var dd=task.due_date?(typeof task.due_date==='number'?new Date(task.due_date):new Date(parseInt(task.due_date))):null
   document.getElementById('f-date').value=dd?dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'):''
   document.getElementById('f-time').value=task.time||''
+  document.getElementById('f-recurring').checked=false
+  document.getElementById('f-recurring-fields').style.display='none'
+  document.getElementById('f-date-row').style.display='flex'
+  document.getElementById('f-recurring-toggle-row').style.display='none'
   document.getElementById('task-modal').classList.add('open')
 }
 
@@ -906,12 +945,31 @@ document.getElementById('task-modal').addEventListener('click',function(e){if(e.
 document.getElementById('modal-save').addEventListener('click', async function() {
   var name=document.getElementById('f-name').value.trim()
   if(!name){toast('Task name required');return}
-  var body={name, due_date:document.getElementById('f-date').value||null, due_time:document.getElementById('f-time').value||null, tag:document.getElementById('f-tag').value||null, note:document.getElementById('f-note').value.trim()||null}
+  var isRecurring=!state.editingTask&&document.getElementById('f-recurring').checked
   var res
-  if(state.editingTask) res=await PATCH(`/tasks/${state.editingTask.id}`,body)
-  else res=await POST('/tasks',body)
-  document.getElementById('task-modal').classList.remove('open')
-  if(res?.success){toast(state.editingTask?'Saved':'Task added');loadData(true)}else toast('Error: '+res?.error)
+  if(isRecurring){
+    var startTime=document.getElementById('f-start-time').value||null
+    if(!startTime){toast('Start time required for recurring');return}
+    res=await POST('/tasks/recurring',{
+      tag:document.getElementById('f-tag').value||null,
+      value:document.getElementById('f-tag').value||null,
+      task_name:name,
+      frequency:document.getElementById('f-freq').value||'weekly',
+      day:document.getElementById('f-day').value||null,
+      start_time:startTime,
+      end_time:document.getElementById('f-end-time').value||null,
+      start_date:document.getElementById('f-start-date').value||null,
+      end_date:document.getElementById('f-end-date').value||null
+    })
+    document.getElementById('task-modal').classList.remove('open')
+    if(res?.success){toast('Recurring event added');loadData(true)}else toast('Error: '+res?.error)
+  } else {
+    var body={name, due_date:document.getElementById('f-date').value||null, due_time:document.getElementById('f-time').value||null, tag:document.getElementById('f-tag').value||null, note:document.getElementById('f-note').value.trim()||null}
+    if(state.editingTask) res=await PATCH(`/tasks/${state.editingTask.id}`,body)
+    else res=await POST('/tasks',body)
+    document.getElementById('task-modal').classList.remove('open')
+    if(res?.success){toast(state.editingTask?'Saved':'Task added');loadData(true)}else toast('Error: '+res?.error)
+  }
 })
 
 function populateTagSelect() {
@@ -1314,11 +1372,11 @@ async function saveFinTx(){
   var dp=document.getElementById('fin-date').value.split('-')
   var dateTs=new Date(parseInt(dp[0]),parseInt(dp[1])-1,parseInt(dp[2]),12,0,0).getTime()
   var tx={id:finState.editingTxId||undefined,description:desc,vendor:document.getElementById('fin-vendor').value.trim()||null,amount:amountRaw,type:document.getElementById('fin-type').value,account:document.getElementById('fin-account').value,to_account:document.getElementById('fin-to-account').value||null,date:dateTs,currency:document.getElementById('fin-currency').value||'TWD',category:document.getElementById('fin-category-val').value||null,subcategory:document.getElementById('fin-subcategory-val').value||null,note:document.getElementById('fin-note').value.trim()||null,ledger:document.getElementById('fin-ledger').value.trim()||null}
-  // Save correction for learning
+  // Save correction for learning (only when something actually changed)
   if(finState.editingTxId){
     var original=finState.allTxs.find(t=>t.id===finState.editingTxId)
-    if(original){
-      POST('/orbit/examples',{user_input:null,bad_parse:{description:original.description,category:original.category,subcategory:original.subcategory,account:original.account},correction:{description:tx.description,category:tx.category,subcategory:tx.subcategory,account:tx.account,type:tx.type},source:'manual_edit'})
+    if(original&&(original.category!==tx.category||original.subcategory!==tx.subcategory||original.account!==tx.account||original.description!==tx.description)){
+      await POST('/orbit/examples',{user_input:null,bad_parse:{description:original.description,category:original.category,subcategory:original.subcategory,account:original.account,type:original.type},correction:{description:tx.description,category:tx.category,subcategory:tx.subcategory,account:tx.account,type:tx.type},source:'manual_edit'})
     }
   }
   var btn=document.querySelector('#fin-tx-modal .btn-primary'); btn.textContent='Saving...'; btn.disabled=true
@@ -1405,7 +1463,7 @@ function orbitAddBubble(who,text){
   orbitHistory.push({who,text}); return msg
 }
 
-function orbitAddThinking(){ var msg=orbitAddBubble('axis','Processing...'); msg.id='orbit-thinking'; msg.style.opacity='0.6'; return msg }
+function orbitAddThinking(){ var msg=orbitAddBubble('axis','Tracking...'); msg.id='orbit-thinking'; msg.style.opacity='0.6'; return msg }
 
 document.getElementById('orbit-input').addEventListener('keydown',e=>{if(e.key==='Enter')orbitSend()})
 
@@ -1476,21 +1534,6 @@ async function handleOrbitAction(action,data){
       if(item){res=await POST('/finance/outstanding/'+item.id+'/settle');if(res?.success){toast(res.message||'Settled');loadFinanceData()}}
       else orbitAddBubble('axis',"Could not find that outstanding item.")
       break
-      case 'addRecurring':
-  res = await POST('/tasks/recurring', {
-    tag:        data.tag        || null,
-    value:      data.tag        || null,
-    task_name:  data.task_name  || data.name || null,
-    frequency:  data.frequency  || 'weekly',
-    day:        data.day        || null,
-    start_time: data.start_time || null,
-    end_time:   data.end_time   || null,
-    start_date: data.start_date || null,
-    end_date:   data.end_date   || null
-  })
-  if (res?.success) { toast('Recurring event added'); loadData(true) }
-  else toast('Error: ' + res?.error)
-  break
   }
 }
 
