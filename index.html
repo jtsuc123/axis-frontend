@@ -1785,7 +1785,7 @@ document.getElementById('refresh-btn').addEventListener('click',()=>loadData(fal
 document.getElementById('nlp-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})
 document.getElementById('fin-tx-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})
 document.getElementById('outstanding-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})
-window.addEventListener('online',()=>{document.getElementById('offline-banner').style.display='none';loadData(true)})
+window.addEventListener('online',()=>{document.getElementById('offline-banner').style.display='none';loadData(true);syncWhiteboard();loadWhiteboard()})
 window.addEventListener('offline',()=>{document.getElementById('offline-banner').style.display='block'})
 
 ;(function(){var btn=document.getElementById('menu-toggle');function update(){btn.style.display=window.innerWidth<=768?'flex':'none'}update();window.addEventListener('resize',update)})()
@@ -1793,7 +1793,47 @@ window.addEventListener('offline',()=>{document.getElementById('offline-banner')
 // ════════════════════════════════════════════════════════════
 //  WHITEBOARD — saves to localStorage, works offline
 // ════════════════════════════════════════════════════════════
-var wb={canvas:null,ctx:null,drawing:false,color:'#3d342a',drawSize:4,eraseSize:30,mode:'draw',lastX:0,lastY:0,saveTimer:null,initialized:false,zoom:1.0}
+var wb={canvas:null,ctx:null,drawing:false,color:'#3d342a',drawSize:4,eraseSize:30,mode:'draw',lastX:0,lastY:0,saveTimer:null,syncTimer:null,initialized:false,zoom:1.0}
+
+// Upload current local board to server
+async function syncWhiteboard(dataUrl) {
+  if (!navigator.onLine || !state.unlocked) return
+  var data = dataUrl || localStorage.getItem('axis-whiteboard')
+  if (!data) return
+  await POST('/whiteboard', { data })
+}
+
+// Pull server board and composite it UNDER local strokes (never overwrites local work)
+async function loadWhiteboard() {
+  if (!navigator.onLine || !state.unlocked) return
+  var CANVAS_W=2400, CANVAS_H=1800
+  var res = await GET('/whiteboard')
+  if (!res?.success || !res.data) return
+  var serverData = res.data
+  var localData  = localStorage.getItem('axis-whiteboard')
+  // If server and local are identical, nothing to do
+  if (serverData === localData) return
+  if (!wb.ctx) return  // whiteboard not open yet — will composite on next open via loadWhiteboard() call in initWhiteboard
+  // Draw server version onto a temp canvas, then composite under current local strokes
+  var tmp = document.createElement('canvas')
+  tmp.width = wb.canvas.width; tmp.height = wb.canvas.height
+  var tctx = tmp.getContext('2d')
+  // Copy current (local) strokes to temp
+  tctx.drawImage(wb.canvas, 0, 0)
+  // Clear main canvas and draw server version first (underneath)
+  var serverImg = new Image()
+  serverImg.onload = function() {
+    wb.ctx.clearRect(0, 0, CANVAS_W, CANVAS_H)
+    wb.ctx.drawImage(serverImg, 0, 0, CANVAS_W, CANVAS_H)  // server layer (bottom)
+    wb.ctx.drawImage(tmp, 0, 0)                             // local layer (on top)
+    // Save the composite as the new local version
+    var merged = wb.canvas.toDataURL()
+    localStorage.setItem('axis-whiteboard', merged)
+    // Push merged result back to server
+    POST('/whiteboard', { data: merged })
+  }
+  serverImg.src = serverData
+}
 
 function initWhiteboard(){
   var CANVAS_W=2400,CANVAS_H=1800,dpr=window.devicePixelRatio||1
@@ -1808,13 +1848,23 @@ function initWhiteboard(){
   } else { wb.canvas=document.getElementById('wb-canvas2') }
   wb.ctx=wb.canvas.getContext('2d'); wb.ctx.scale(dpr,dpr); wb.ctx.lineCap='round'; wb.ctx.lineJoin='round'; wb.initialized=true
 
-  // Load from localStorage (works offline)
+  // Load from localStorage first (instant, works offline), then composite server version
   var saved=localStorage.getItem('axis-whiteboard')
   if(saved){var img=new Image(); img.onload=function(){wb.ctx.drawImage(img,0,0,CANVAS_W,CANVAS_H)}; img.src=saved}
+  loadWhiteboard()
 
   function getPos(e){var rect=wb.canvas.getBoundingClientRect(),cx=e.touches?e.touches[0].clientX:e.clientX,cy=e.touches?e.touches[0].clientY:e.clientY;return{x:(cx-rect.left)/wb.zoom,y:(cy-rect.top)/wb.zoom}}
   function getBgColor(){return document.documentElement.getAttribute('data-theme')==='dark'?'#1e1a16':'#faf7f2'}
-  function saveBoard(){clearTimeout(wb.saveTimer);wb.saveTimer=setTimeout(function(){localStorage.setItem('axis-whiteboard',wb.canvas.toDataURL())},800)}
+  function saveBoard(){
+    clearTimeout(wb.saveTimer)
+    wb.saveTimer=setTimeout(function(){
+      var data=wb.canvas.toDataURL()
+      localStorage.setItem('axis-whiteboard',data)
+      // Push to server in background (debounced extra 2s so we don't flood on every stroke)
+      clearTimeout(wb.syncTimer)
+      wb.syncTimer=setTimeout(function(){ syncWhiteboard(data) },2000)
+    },800)
+  }
 
   wb.canvas.addEventListener('mousedown',function(e){
     if(wb.mode==='text'){var pos=getPos(e),text=document.getElementById('wb-text-input').value.trim();if(!text)return;wb.ctx.font='16px DM Sans,sans-serif';wb.ctx.fillStyle=wb.color;wb.ctx.fillText(text,pos.x,pos.y);saveBoard();return}
