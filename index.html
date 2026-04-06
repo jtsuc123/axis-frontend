@@ -510,6 +510,22 @@ nav{flex:1;}
         <div class="form-group"><label class="form-label">Time (optional)</label><input type="time" class="form-input" id="f-time"></div>
       </div>
       <div class="form-group"><label class="form-label">Tag</label><select class="form-select" id="f-tag"><option value="">No tag</option></select></div>
+      <div class="form-group">
+        <label class="form-label">Notify me before</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select class="form-select" id="f-notify" style="flex:1;">
+            <option value="">No notification</option>
+            <option value="5">5 minutes</option>
+            <option value="10" selected>10 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="720">12 hours</option>
+            <option value="1440">1 day</option>
+            <option value="custom">Custom...</option>
+          </select>
+          <input type="number" id="f-notify-custom" placeholder="mins" min="1" class="form-input" style="width:90px;display:none;">
+        </div>
+      </div>
       <div class="form-group"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="f-note" placeholder="Additional details..."></textarea></div>
       <div id="f-recurring-toggle-row" class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:2px;">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--brown2);">
@@ -576,6 +592,42 @@ nav{flex:1;}
 <div id="toast"></div>
 
 <script>
+// ════════════════════════════════════════════════════════════
+//  SERVICE WORKER + NOTIFICATIONS
+// ════════════════════════════════════════════════════════════
+async function initNotifications() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) return
+  if (Notification.permission === 'default') await Notification.requestPermission()
+  try { await navigator.serviceWorker.register('/sw.js') } catch(e) { console.warn('SW reg failed', e) }
+}
+
+var scheduledNotifs = {}
+
+function scheduleNotifications() {
+  if (!state.data || Notification.permission !== 'granted') return
+  Object.values(scheduledNotifs).forEach(t => clearTimeout(t))
+  scheduledNotifs = {}
+  var now = Date.now()
+  ;(state.data.todo || []).forEach(function(task) {
+    if (!task.due_date || !task.time || task.completed) return
+    var dd = typeof task.due_date === 'number' ? task.due_date : parseInt(task.due_date)
+    var d  = new Date(dd)
+    var parts = task.time.split(':')
+    d.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0)
+    var notifyMins = task.notify_before != null ? task.notify_before : 10
+    var fireAt = d.getTime() - notifyMins * 60000
+    var delay  = fireAt - now
+    if (delay < 0 || delay > 7 * 86400000) return
+    scheduledNotifs[task.id] = setTimeout(function() {
+      new Notification('Axis — ' + task.name, {
+        body: 'Starting at ' + task.time,
+        icon: '/favicon.ico',
+        tag:  'axis-' + task.id
+      })
+    }, delay)
+  })
+}
+
 // ════════════════════════════════════════════════════════════
 //  CONFIG
 // ════════════════════════════════════════════════════════════
@@ -743,7 +795,7 @@ async function checkToken(word) {
       if(window._rebuildInterval) clearInterval(window._rebuildInterval)
       document.getElementById('auth-overlay').classList.remove('show')
       document.querySelector('.auth-card').classList.remove('auth-card-blur')
-      state.unlocked=true; startInactivityTimer(); loadData(false)
+      state.unlocked=true; startInactivityTimer(); loadData(false); initNotifications()
     }, 300)
   } else {
     wrongCount++
@@ -779,7 +831,7 @@ async function verifyResetCode() {
   var code = document.getElementById('reset-code-input').value.trim()
   if (!code) { toast('Enter the code first'); return }
   const res = await POST('/auth/reset/verify', {code})
-  if (res?.valid) { clearInterval(authClockInterval); document.getElementById('auth-overlay').classList.remove('show'); state.unlocked=true; startInactivityTimer(); toast('Verified') }
+  if (res?.valid) { clearInterval(authClockInterval); document.getElementById('auth-overlay').classList.remove('show'); state.unlocked=true; startInactivityTimer(); initNotifications(); toast('Verified') }
   else toast('Invalid code')
 }
 
@@ -827,7 +879,7 @@ async function loadData(silent) {
 }
 
 setInterval(()=>{ if(navigator.onLine&&state.unlocked&&!document.hidden) loadData(true) },60000)
-function renderAll() { renderOverview(); renderAgenda(); renderTrash(); populateTagSelect() }
+function renderAll() { renderOverview(); renderAgenda(); renderTrash(); populateTagSelect(); scheduleNotifications() }
 
 // ════════════════════════════════════════════════════════════
 //  OVERVIEW
@@ -908,6 +960,8 @@ function openAddModal() {
   state.editingTask=null
   document.getElementById('modal-title').textContent='Add task'
   ;['f-name','f-note','f-time','f-start-time','f-end-time'].forEach(id=>document.getElementById(id).value='')
+  document.getElementById('f-notify').value='10'
+  document.getElementById('f-notify-custom').style.display='none'
   document.getElementById('f-tag').value=''
   document.getElementById('f-recurring').checked=false
   document.getElementById('f-recurring-fields').style.display='none'
@@ -933,6 +987,10 @@ function openEditTask(id) {
   var dd=task.due_date?(typeof task.due_date==='number'?new Date(task.due_date):new Date(parseInt(task.due_date))):null
   document.getElementById('f-date').value=dd?dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'):''
   document.getElementById('f-time').value=task.time||''
+  var notifyStored=task.notify_before!=null?String(task.notify_before):'10'
+  var knownVals=['','5','10','30','60','720','1440']
+  if(knownVals.includes(notifyStored)){document.getElementById('f-notify').value=notifyStored;document.getElementById('f-notify-custom').style.display='none'}
+  else{document.getElementById('f-notify').value='custom';document.getElementById('f-notify-custom').value=notifyStored;document.getElementById('f-notify-custom').style.display='block'}
   document.getElementById('f-recurring').checked=false
   document.getElementById('f-recurring-fields').style.display='none'
   document.getElementById('f-date-row').style.display='flex'
@@ -942,6 +1000,9 @@ function openEditTask(id) {
 
 document.getElementById('modal-cancel').addEventListener('click',()=>document.getElementById('task-modal').classList.remove('open'))
 document.getElementById('task-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})
+document.getElementById('f-notify').addEventListener('change',function(){
+  document.getElementById('f-notify-custom').style.display = this.value==='custom' ? 'block' : 'none'
+})
 
 document.getElementById('modal-save').addEventListener('click', async function() {
   var name=document.getElementById('f-name').value.trim()
@@ -965,7 +1026,9 @@ document.getElementById('modal-save').addEventListener('click', async function()
     document.getElementById('task-modal').classList.remove('open')
     if(res?.success){toast('Recurring event added');loadData(true)}else toast('Error: '+res?.error)
   } else {
-    var body={name, due_date:document.getElementById('f-date').value||null, due_time:document.getElementById('f-time').value||null, tag:document.getElementById('f-tag').value||null, note:document.getElementById('f-note').value.trim()||null}
+    var notifyVal=document.getElementById('f-notify').value
+    var notifyMins=notifyVal==='custom'?parseInt(document.getElementById('f-notify-custom').value)||10:notifyVal?parseInt(notifyVal):null
+    var body={name, due_date:document.getElementById('f-date').value||null, due_time:document.getElementById('f-time').value||null, tag:document.getElementById('f-tag').value||null, note:document.getElementById('f-note').value.trim()||null, notify_before:notifyMins}
     if(state.editingTask) res=await PATCH(`/tasks/${state.editingTask.id}`,body)
     else res=await POST('/tasks',body)
     document.getElementById('task-modal').classList.remove('open')
@@ -1741,6 +1804,7 @@ if(isJWTValid()){
   document.getElementById('app').classList.add('unlocked')
   loadData(false)
   startInactivityTimer()
+  initNotifications()
   if(defaultView==='whiteboard') setTimeout(()=>{if(!wb.initialized)initWhiteboard()},100)
 } else {
   clearJWT()
