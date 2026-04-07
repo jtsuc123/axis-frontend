@@ -384,7 +384,7 @@ nav{flex:1;}
             <div style="display:flex;align-items:center;gap:6px;">
               <div id="fx-rate-badge" style="font-size:10px;color:var(--green);border:1px solid var(--cream3);padding:2px 8px;border-radius:20px;display:flex;align-items:center;gap:4px;">
                 <div style="width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
-                <span id="fx-rate-label">Loading rate...</span>
+                <span id="fx-rate-label">NTD$1 = USD$0.0313</span>
               </div>
               <div style="display:flex;gap:3px;" id="cur-toggle"></div>
               <button onclick="openAddCurrencyModal()" style="font-size:11px;padding:2px 9px;border-radius:20px;border:1px solid var(--cream3);background:none;color:var(--brown4);cursor:pointer;font-family:'DM Sans',sans-serif;">+</button>
@@ -1353,14 +1353,31 @@ function updateFxLabel(){
   document.getElementById('fx-rate-label').textContent=base+'1 = '+tgt+(1/rate).toFixed(cur==='JPY'?2:4)
 }
 
+async function loadFxRates(){
+  try {
+    const [fxRes, twdRes] = await Promise.all([
+      fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,JPY,GBP,AUD,SGD,HKD,KRW'),
+      fetch('https://open.er-api.com/v6/latest/USD')
+    ])
+    const fxData  = await fxRes.json()
+    const twdData = await twdRes.json()
+    const usdToTwd = twdData?.rates?.TWD || FX_FALLBACK.USD
+    const rates = Object.assign({},FX_FALLBACK,{TWD:1,USD:usdToTwd})
+    Object.keys(fxData?.rates||{}).forEach(cur=>{rates[cur]=usdToTwd/fxData.rates[cur]})
+    finState.fxRates=rates
+  } catch(e) {
+    // keep fallback already set
+  }
+  updateFxLabel(); renderFinanceAll()
+}
+
 async function loadFinanceData(){
   const res=await GET('/finance/data')
   if(!res?.success){toast('Finance data error');return}
   finState.data=res; finState.allTxs=res.transactions||[]
   var now=new Date(); if(!finState.selectedMonth){finState.selectedMonth={year:now.getFullYear(),month:now.getMonth()}}
   renderFinanceAll()
-  const fxRes=await GET('/finance/fx')
-  if(fxRes?.rates){finState.fxRates=Object.assign({},FX_FALLBACK,fxRes.rates);updateFxLabel();renderFinanceAll()}
+  loadFxRates()
 }
 
 function renderFinanceAll(){renderBalances();renderCurrencyToggle();renderMonthTabs();renderMonthlySummary();renderTransactions();renderOutstanding();updateFxLabel();applyPendingHighlight()}
@@ -1390,8 +1407,8 @@ function openAddCurrencyModal(){
   var cur=prompt('Supported currencies:\nAUD, CAD, CHF, CNY, HKD, IDR, INR, KRW, MYR, NZD, PHP, SGD, THB, VND\n\nEnter currency code:')
   if(!cur) return; cur=cur.trim().toUpperCase(); if(!cur) return
   toast('Adding '+cur+'...')
-  GET('/finance/fx').then(function(res){
-    if(res?.rates?.[cur]){finState.fxRates=res.rates;renderCurrencyToggle();switchFinCurrency(cur);toast('Added '+cur)}
+  loadFxRates().then(function(){
+    if(finState.fxRates[cur]){renderCurrencyToggle();switchFinCurrency(cur);toast('Added '+cur)}
     else toast('Currency '+cur+' not found')
   })
 }
