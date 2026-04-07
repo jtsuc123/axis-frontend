@@ -131,10 +131,14 @@ nav{flex:1;}
 .btn-secondary:hover{background:var(--cream3);}
 .btn-danger{background:var(--red-bg);color:var(--red);}
 .btn-danger:hover{background:#f5c4b3;}
-#loading{position:fixed;inset:0;background:#1e1a16;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;z-index:999;}
-@keyframes axisRotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes axisPulse{0%,100%{opacity:0.18;transform:scale(0.9)}50%{opacity:0.38;transform:scale(1.2)}}
-@keyframes axisIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+#loading{position:fixed;inset:0;background:#1e1a16;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:36px;z-index:999;}
+.load-ring{position:absolute;border-radius:50%}
+.load-dot{position:absolute;border-radius:50%;background:#BA7517}
+@keyframes loadCW{to{transform:rotate(360deg)}}
+@keyframes loadCCW{to{transform:rotate(-360deg)}}
+@keyframes loadSonar{0%{transform:scale(0.8);opacity:0.6}100%{transform:scale(3.4);opacity:0}}
+@keyframes loadPulse{0%,100%{opacity:0.5;transform:scale(0.92)}50%{opacity:1;transform:scale(1.1)}}
+@keyframes loadFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 #mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--cream2);border-top:1px solid var(--cream3);padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:50;}
 .mobile-nav-tabs{display:flex;overflow-x:auto;padding:0 12px;gap:4px;scrollbar-width:none;}
 .mobile-nav-tabs::-webkit-scrollbar{display:none;}
@@ -176,16 +180,41 @@ nav{flex:1;}
 <body>
 
 <div id="loading">
-  <div style="position:relative;width:88px;height:88px;display:flex;align-items:center;justify-content:center;animation:axisIn 0.5s ease both">
-    <div style="position:absolute;inset:-18px;border-radius:50%;background:radial-gradient(circle,rgba(186,117,23,0.35) 0%,transparent 65%);animation:axisPulse 2.6s ease-in-out infinite;pointer-events:none"></div>
-    <svg width="72" height="72" viewBox="0 0 52 52" fill="none" style="animation:axisRotate 14s linear infinite">
-      <path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="#BA7517" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
-      <path d="M26 14 L28 22 L36 26 L28 30 L26 38 L24 30 L16 26 L24 22 Z" fill="#BA7517" opacity="0.25"/>
-      <circle cx="26" cy="26" r="3" fill="#BA7517"/>
-    </svg>
+  <div style="position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center">
+    <!-- ambient glow -->
+    <div style="position:absolute;inset:-40px;border-radius:50%;background:radial-gradient(circle,rgba(186,117,23,0.13) 0%,transparent 60%);pointer-events:none"></div>
+    <!-- sonar rings -->
+    <div class="load-ring" style="width:72px;height:72px;border:1px solid rgba(186,117,23,0.55);animation:loadSonar 2.4s ease-out infinite 0s"></div>
+    <div class="load-ring" style="width:72px;height:72px;border:1px solid rgba(186,117,23,0.55);animation:loadSonar 2.4s ease-out infinite 0.8s"></div>
+    <div class="load-ring" style="width:72px;height:72px;border:1px solid rgba(186,117,23,0.55);animation:loadSonar 2.4s ease-out infinite 1.6s"></div>
+    <!-- outer orbit CW -->
+    <div class="load-ring" style="width:172px;height:172px;border:1px solid rgba(186,117,23,0.18);animation:loadCW 11s linear infinite">
+      <div class="load-dot" style="width:7px;height:7px;top:-3.5px;left:calc(50% - 3.5px);box-shadow:0 0 10px #BA7517,0 0 22px rgba(186,117,23,0.5)"></div>
+    </div>
+    <!-- mid orbit CCW, 2 dots -->
+    <div class="load-ring" style="width:128px;height:128px;border:1px solid rgba(186,117,23,0.15);animation:loadCCW 7s linear infinite">
+      <div class="load-dot" style="width:5px;height:5px;top:-2.5px;left:calc(50% - 2.5px);background:rgba(186,117,23,0.85);box-shadow:0 0 8px rgba(186,117,23,0.7)"></div>
+      <div class="load-dot" style="width:5px;height:5px;bottom:-2.5px;left:calc(50% - 2.5px);background:rgba(186,117,23,0.85);box-shadow:0 0 8px rgba(186,117,23,0.7)"></div>
+    </div>
+    <!-- inner orbit CW -->
+    <div class="load-ring" style="width:88px;height:88px;border:1px solid rgba(186,117,23,0.12);animation:loadCW 4s linear infinite">
+      <div class="load-dot" style="width:4px;height:4px;top:-2px;left:calc(50% - 2px);background:rgba(186,117,23,0.65);box-shadow:0 0 6px rgba(186,117,23,0.5)"></div>
+    </div>
+    <!-- center icon -->
+    <div style="position:relative;z-index:2">
+      <div style="position:absolute;inset:-14px;border-radius:50%;background:radial-gradient(circle,rgba(186,117,23,0.45) 0%,transparent 65%);animation:loadPulse 2.2s ease-in-out infinite"></div>
+      <div style="position:relative;width:58px;height:58px;border-radius:16px;background:#2a2318;display:flex;align-items:center;justify-content:center;box-shadow:0 0 28px rgba(186,117,23,0.4),0 0 56px rgba(186,117,23,0.12),inset 0 1px 0 rgba(186,117,23,0.2)">
+        <svg width="36" height="36" viewBox="0 0 52 52" fill="none">
+          <path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="#BA7517" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+          <path d="M26 14 L28 22 L36 26 L28 30 L26 38 L24 30 L16 26 L24 22 Z" fill="#BA7517" opacity="0.3"/>
+          <circle cx="26" cy="26" r="3" fill="#BA7517"/>
+        </svg>
+      </div>
+    </div>
   </div>
-  <div style="animation:axisIn 0.5s 0.15s ease both;opacity:0;text-align:center">
-    <div style="font-family:'DM Serif Display',serif;font-size:34px;color:#faf7f2;letter-spacing:0.05em">Axis</div>
+  <div style="animation:loadFadeUp 0.6s 0.4s ease both;opacity:0;text-align:center">
+    <div style="font-family:'DM Serif Display',serif;font-size:38px;color:#faf7f2;letter-spacing:0.04em;text-shadow:0 0 32px rgba(186,117,23,0.35)">Axis</div>
+    <div style="font-family:'DM Sans',sans-serif;font-size:11px;color:rgba(186,117,23,0.7);letter-spacing:0.14em;text-transform:uppercase;margin-top:4px">Personal OS</div>
   </div>
 </div>
 
