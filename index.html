@@ -131,9 +131,10 @@ nav{flex:1;}
 .btn-secondary:hover{background:var(--cream3);}
 .btn-danger{background:var(--red-bg);color:var(--red);}
 .btn-danger:hover{background:#f5c4b3;}
-#loading{position:fixed;inset:0;background:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;}
-.spinner{width:32px;height:32px;border-radius:50%;border:2px solid var(--cream3);border-top-color:var(--brown);animation:spin 0.8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
+#loading{position:fixed;inset:0;background:#1e1a16;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;z-index:999;}
+@keyframes axisRotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes axisPulse{0%,100%{opacity:0.18;transform:scale(0.9)}50%{opacity:0.38;transform:scale(1.2)}}
+@keyframes axisIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 #mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--cream2);border-top:1px solid var(--cream3);padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:50;}
 .mobile-nav-tabs{display:flex;overflow-x:auto;padding:0 12px;gap:4px;scrollbar-width:none;}
 .mobile-nav-tabs::-webkit-scrollbar{display:none;}
@@ -175,13 +176,17 @@ nav{flex:1;}
 <body>
 
 <div id="loading">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-    <div style="width:48px;height:48px;border-radius:12px;background:#1e1a16;display:flex;align-items:center;justify-content:center;">
-      <svg width="28" height="28" viewBox="0 0 52 52" fill="none"><path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="#BA7517" stroke-width="1.5" fill="none" stroke-linejoin="round"/><path d="M26 14 L28 22 L36 26 L28 30 L26 38 L24 30 L16 26 L24 22 Z" fill="#BA7517" opacity="0.2"/><circle cx="26" cy="26" r="3" fill="#BA7517"/></svg>
-    </div>
-    <h1 style="font-family:'DM Serif Display',serif;font-size:36px;color:var(--brown);">Axis</h1>
+  <div style="position:relative;width:88px;height:88px;display:flex;align-items:center;justify-content:center;animation:axisIn 0.5s ease both">
+    <div style="position:absolute;inset:-18px;border-radius:50%;background:radial-gradient(circle,rgba(186,117,23,0.35) 0%,transparent 65%);animation:axisPulse 2.6s ease-in-out infinite;pointer-events:none"></div>
+    <svg width="72" height="72" viewBox="0 0 52 52" fill="none" style="animation:axisRotate 14s linear infinite">
+      <path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="#BA7517" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+      <path d="M26 14 L28 22 L36 26 L28 30 L26 38 L24 30 L16 26 L24 22 Z" fill="#BA7517" opacity="0.25"/>
+      <circle cx="26" cy="26" r="3" fill="#BA7517"/>
+    </svg>
   </div>
-  <div class="spinner"></div>
+  <div style="animation:axisIn 0.5s 0.15s ease both;opacity:0;text-align:center">
+    <div style="font-family:'DM Serif Display',serif;font-size:34px;color:#faf7f2;letter-spacing:0.05em">Axis</div>
+  </div>
 </div>
 
 <div id="auth-overlay">
