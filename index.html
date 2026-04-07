@@ -384,7 +384,7 @@ nav{flex:1;}
             <div style="display:flex;align-items:center;gap:6px;">
               <div id="fx-rate-badge" style="font-size:10px;color:var(--green);border:1px solid var(--cream3);padding:2px 8px;border-radius:20px;display:flex;align-items:center;gap:4px;">
                 <div style="width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
-                <span id="fx-rate-label">NTD$1 = USD$0.0313</span>
+                <span id="fx-rate-label">Fetching rates...</span>
               </div>
               <div style="display:flex;gap:3px;" id="cur-toggle"></div>
               <button onclick="openAddCurrencyModal()" style="font-size:11px;padding:2px 9px;border-radius:20px;border:1px solid var(--cream3);background:none;color:var(--brown4);cursor:pointer;font-family:'DM Sans',sans-serif;">+</button>
@@ -1326,7 +1326,7 @@ var FIN_CATEGORIES=[
 var CURRENCY_LABELS={TWD:'NTD$',NTD:'NTD$',USD:'USD$',AUD:'AUD$',EUR:'€',GBP:'£',JPY:'JP¥',KRW:'₩',SGD:'SGD$',HKD:'HKD$',CNY:'¥',THB:'฿',MYR:'MYR$',PHP:'₱',IDR:'Rp',VND:'₫',INR:'₹',CAD:'CAD$',NZD:'NZD$',CHF:'CHF'}
 
 var FX_FALLBACK={TWD:1,USD:32.0,EUR:34.8,JPY:0.21,GBP:41.5,AUD:20.5,SGD:24.0,HKD:4.1,KRW:0.023}
-var finState={data:null,displayCurrency:'TWD',fxRates:Object.assign({},FX_FALLBACK),selectedMonth:null,txOffset:0,TX_PAGE:20,editingTxId:null,editingOutId:null,searchQuery:'',allTxs:[]}
+var finState={data:null,displayCurrency:'TWD',fxRates:{},selectedMonth:null,txOffset:0,TX_PAGE:20,editingTxId:null,editingOutId:null,searchQuery:'',allTxs:[]}
 
 function finFmt(amount,currency){
   currency=(currency||finState.displayCurrency||'TWD').toUpperCase()
@@ -1346,11 +1346,19 @@ function finConvert(amount,fromCurrency){
 }
 
 function updateFxLabel(){
-  var cur=finState.displayCurrency
-  var rate=cur==='TWD'?1:(finState.fxRates[cur]||1)
+  var cur=finState.displayCurrency==='TWD'?'USD':finState.displayCurrency
+  var rate=finState.fxRates[cur]
+  var badge=document.getElementById('fx-rate-badge')
+  var dot=badge?badge.querySelector('div'):null
+  if(!rate){
+    document.getElementById('fx-rate-label').textContent='Fetching rates...'
+    return
+  }
+  var isLive=!FX_FALLBACK[cur]||(Math.abs(rate-FX_FALLBACK[cur])>0.05)
   var tgt=CURRENCY_LABELS[cur]||cur
-  var base=CURRENCY_LABELS['TWD']
-  document.getElementById('fx-rate-label').textContent=base+'1 = '+tgt+(1/rate).toFixed(cur==='JPY'?2:4)
+  var decimals=cur==='JPY'||cur==='KRW'?2:4
+  document.getElementById('fx-rate-label').textContent='NTD$1 = '+tgt+(1/rate).toFixed(decimals)+(isLive?' ·live':' ·est')
+  if(dot){dot.style.background=isLive?'var(--green)':'var(--amber)';badge.style.color=isLive?'var(--green)':'var(--amber)'}
 }
 
 async function loadFxRates(){
@@ -1366,7 +1374,7 @@ async function loadFxRates(){
     Object.keys(fxData?.rates||{}).forEach(cur=>{rates[cur]=usdToTwd/fxData.rates[cur]})
     finState.fxRates=rates
   } catch(e) {
-    // keep fallback already set
+    finState.fxRates=Object.assign({},FX_FALLBACK)
   }
   updateFxLabel(); renderFinanceAll()
 }
