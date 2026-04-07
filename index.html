@@ -319,6 +319,22 @@ nav{flex:1;}
 
       <!-- WHITEBOARD -->
       <div class="view" id="view-whiteboard">
+        <!-- NOTEPAD -->
+        <div id="notepad-section" style="margin-bottom:20px;">
+          <div style="background:var(--cream2);border:1px solid var(--cream3);border-radius:10px 10px 0 0;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:11px;font-weight:500;color:var(--brown4);letter-spacing:.07em;text-transform:uppercase;">Notes</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span id="notepad-saved-label" style="font-size:10px;color:var(--brown4);opacity:0;transition:opacity 0.4s;">Saved</span>
+              <button id="notepad-lock-btn" onclick="toggleNotepadLock()" style="display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;border:1px solid var(--cream3);background:var(--cream);color:var(--brown3);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:background 0.15s,color 0.15s;">
+                <span id="notepad-lock-icon">✏</span>
+                <span id="notepad-lock-label">Editing</span>
+              </button>
+            </div>
+          </div>
+          <textarea id="notepad-textarea"
+            placeholder="Type your notes here..."
+            style="display:block;width:100%;min-height:220px;box-sizing:border-box;padding:16px 18px;background:var(--cream);border:1px solid var(--cream3);border-top:none;border-radius:0 0 10px 10px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.7;outline:none;resize:vertical;transition:background 0.15s;"></textarea>
+        </div>
         <div class="section-hd"><h2>Whiteboard</h2><span style="font-size:11px;color:var(--brown4);">Auto-saved locally</span></div>
         <div style="background:var(--cream2);border:1px solid var(--cream3);border-radius:10px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
           <div style="display:flex;gap:6px;align-items:center;">
@@ -351,23 +367,6 @@ nav{flex:1;}
         </div>
         <canvas id="wb-canvas" style="display:none;"></canvas>
         <input type="text" id="wb-text-input" placeholder="Type here, then click canvas to place..." style="display:none;width:100%;padding:8px 12px;background:var(--cream2);border:1px solid var(--cream3);border-radius:8px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;margin-top:8px;">
-
-        <!-- NOTEPAD -->
-        <div id="notepad-section" style="margin-top:18px;">
-          <div style="background:var(--cream2);border:1px solid var(--cream3);border-radius:10px 10px 0 0;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;">
-            <span style="font-size:11px;font-weight:500;color:var(--brown4);letter-spacing:.07em;text-transform:uppercase;">Notes</span>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span id="notepad-saved-label" style="font-size:10px;color:var(--brown4);opacity:0;transition:opacity 0.4s;">Saved</span>
-              <button id="notepad-lock-btn" onclick="toggleNotepadLock()" style="display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;border:1px solid var(--cream3);background:var(--cream);color:var(--brown3);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:background 0.15s,color 0.15s;">
-                <span id="notepad-lock-icon">✏</span>
-                <span id="notepad-lock-label">Editing</span>
-              </button>
-            </div>
-          </div>
-          <textarea id="notepad-textarea"
-            placeholder="Type your notes here..."
-            style="display:block;width:100%;min-height:220px;box-sizing:border-box;padding:16px 18px;background:var(--cream);border:1px solid var(--cream3);border-top:none;border-radius:0 0 10px 10px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.7;outline:none;resize:vertical;transition:background 0.15s;"></textarea>
-        </div>
       </div>
 
       <!-- FINANCE -->
