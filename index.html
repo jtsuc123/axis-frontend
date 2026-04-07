@@ -1027,8 +1027,11 @@ function renderOverview() {
     html+='<div class="task-group"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><div class="section-label" style="margin-bottom:0;">No due date</div><span style="font-size:10px;font-weight:500;background:var(--cream2);color:var(--brown4);border:1px solid var(--cream3);border-radius:20px;padding:1px 8px;">'+cat.undated.length+'</span></div>'
     html+='<div style="background:var(--cream);border:1px solid var(--cream3);border-radius:10px;padding:4px 14px;">'
     cat.undated.forEach(function(task){
+      var uTagPill=''
+      if(task.tag){var utc=tagColor(task.tag),utn=TAG_NAMES[task.tag]||task.tag;uTagPill='<span class="task-tag" style="background:'+utc.bg+';color:'+utc.color+';">'+esc(utn)+'</span>'}
       html+='<div id="task-card-'+task.id+'" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cream3);cursor:pointer;" onclick="openEditTask(\''+task.id+'\')">'+AXIS_STAR_SVG
       html+='<span style="font-size:13px;color:var(--brown);flex:1;">'+esc(task.name)+'</span>'
+      html+=uTagPill
       html+='<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button></div></div>'
     })
     html+='</div></div>'
@@ -1048,9 +1051,12 @@ function taskCardHTML(task,type){
   if(!task.due_date) dateStr='No due date'
   else if(type==='pastdue'){var dAgo=daysBetween(new Date(typeof task.due_date==='number'?task.due_date:parseInt(task.due_date)).setHours(0,0,0,0),today());dateStr=dAgo===1?'Yesterday':dAgo+' days ago'}
   else dateStr=new Date(typeof task.due_date==='number'?task.due_date:parseInt(task.due_date)).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric',weekday:'long'})
+  var tagPill=''
+  if(task.tag){var tc=tagColor(task.tag),tn=TAG_NAMES[task.tag]||task.tag;tagPill='<span class="task-tag" style="background:'+tc.bg+';color:'+tc.color+';">'+esc(tn)+'</span>'}
   return '<div class="task-card" id="task-card-'+task.id+'" onclick="openEditTask(\''+task.id+'\')">'+
     '<div class="task-icon" style="background:'+c[0]+'"><div class="task-icon-inner" style="background:'+c[1]+'"></div></div>'+
     '<div class="task-info"><div class="task-name'+doneCls+'">'+esc(task.name)+'</div><div class="task-meta">'+dateStr+'</div></div>'+
+    tagPill+
     (hasNote?'<span class="note-pill"><span class="note-dot"></span>note</span>':'')+
     '<div class="task-actions">'+
     (task.completed?'<button class="task-action-btn" onclick="event.stopPropagation();uncompleteTask(\''+task.id+'\')" title="Undo">↩</button>':'<button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button>')+
@@ -1232,9 +1238,12 @@ function renderAgenda() {
           var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
           var delFn=task.isRecurring?'deleteRecurring':'deleteTask'
           var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':task.isRecurring?'':('openEditTask(\''+task.id+'\')')
+          var calTagToday=''
+          if(task.tag){var ctc=tagColor(task.tag),ctn=TAG_NAMES[task.tag]||task.tag;calTagToday='<span style="font-size:9px;font-weight:500;padding:1px 6px;border-radius:20px;background:rgba(186,117,23,0.25);color:#BA7517;flex-shrink:0;">'+esc(ctn)+'</span>'}
           html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span style="font-size:10px;min-width:68px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'">'+esc(task.name)+'</span>'
+          html+=calTagToday
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.5);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:auto;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
           html+='</div>'
         })
@@ -1252,9 +1261,12 @@ function renderAgenda() {
           var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
           var delFn=task.isRecurring?'deleteRecurring':'deleteTask'
           var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':task.isRecurring?'':('openEditTask(\''+task.id+'\')')
+          var calTag=''
+          if(task.tag){var ctc2=tagColor(task.tag),ctn2=TAG_NAMES[task.tag]||task.tag;calTag='<span style="font-size:9px;font-weight:500;padding:1px 6px;border-radius:20px;background:'+ctc2.bg+';color:'+ctc2.color+';flex-shrink:0;">'+esc(ctn2)+'</span>'}
           html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span class="agenda-time" style="color:var(--brown4);min-width:80px;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'">'+esc(task.name)+'</span>'
+          html+=calTag
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:4px;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
           html+='</div>'
         })
