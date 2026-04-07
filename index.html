@@ -2060,7 +2060,7 @@ function toggleNotepadLock(){
 ;(function(){
   var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52"><rect width="52" height="52" rx="10" fill="%231e1a16"/><path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="%23BA7517" stroke-width="2.5" fill="none" stroke-linejoin="round"/><circle cx="26" cy="26" r="4" fill="%23BA7517"/></svg>'
   var url='data:image/svg+xml,'+svg
-  document.querySelectorAll('link[rel*="icon"]').forEach(e=>e.parentNode.removeChild(e))
+  document.querySelectorAll('link[rel="icon"],link[rel="shortcut icon"]').forEach(e=>e.parentNode.removeChild(e))
   ;['shortcut icon','icon'].forEach(function(rel){var link=document.createElement('link');link.rel=rel;link.type='image/svg+xml';link.href=url;document.head.appendChild(link)})
 })()
 
