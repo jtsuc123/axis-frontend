@@ -358,6 +358,9 @@ nav{flex:1;}
             <select id="wb-erase-size" style="padding:4px 8px;background:var(--cream);border:1px solid var(--cream3);border-radius:6px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;"><option value="10">S</option><option value="30" selected>M</option><option value="60">L</option><option value="100">XL</option></select>
           </div>
           <div style="display:flex;align-items:center;gap:6px;margin-left:auto;">
+            <button id="wb-lock-btn" onclick="toggleWbLock()" style="display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;border:1px solid var(--cream3);background:var(--cream2);color:var(--brown4);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:background 0.15s,color 0.15s;">
+              <span id="wb-lock-icon">🔒</span><span id="wb-lock-label">Locked</span>
+            </button>
             <button id="wb-zoom-out" style="background:var(--cream2);border:1px solid var(--cream3);border-radius:6px;padding:4px 10px;font-size:14px;cursor:pointer;color:var(--brown);font-family:'DM Sans',sans-serif;">−</button>
             <span id="wb-zoom-label" style="font-size:11px;color:var(--brown4);min-width:34px;text-align:center;">100%</span>
             <button id="wb-zoom-in" style="background:var(--cream2);border:1px solid var(--cream3);border-radius:6px;padding:4px 10px;font-size:14px;cursor:pointer;color:var(--brown);font-family:'DM Sans',sans-serif;">+</button>
@@ -1919,7 +1922,21 @@ window.addEventListener('offline',()=>{document.getElementById('offline-banner')
 // ════════════════════════════════════════════════════════════
 //  WHITEBOARD — saves to localStorage, works offline
 // ════════════════════════════════════════════════════════════
-var wb={canvas:null,ctx:null,drawing:false,color:'#3d342a',drawSize:4,eraseSize:30,mode:'draw',lastX:0,lastY:0,saveTimer:null,syncTimer:null,initialized:false,zoom:1.0}
+var wb={canvas:null,ctx:null,drawing:false,color:'#3d342a',drawSize:4,eraseSize:30,mode:'draw',lastX:0,lastY:0,saveTimer:null,syncTimer:null,initialized:false,zoom:1.0,locked:true}
+function toggleWbLock(){
+  wb.locked=!wb.locked
+  var icon=document.getElementById('wb-lock-icon'),label=document.getElementById('wb-lock-label'),btn=document.getElementById('wb-lock-btn')
+  var scroll=document.getElementById('wb-scroll')
+  if(wb.locked){
+    icon.textContent='🔒';label.textContent='Locked';btn.style.background='var(--cream2)';btn.style.color='var(--brown4)'
+    if(scroll) scroll.style.cursor='default'
+    if(wb.canvas) wb.canvas.style.cursor='default'
+  } else {
+    icon.textContent='✏';label.textContent='Editing';btn.style.background='var(--cream)';btn.style.color='var(--brown3)'
+    if(scroll) scroll.style.cursor=''
+    if(wb.canvas) wb.canvas.style.cursor='crosshair'
+  }
+}
 
 // Upload current local board to server
 async function syncWhiteboard(dataUrl) {
@@ -1992,17 +2009,19 @@ function initWhiteboard(){
     },800)
   }
 
+  wb.canvas.style.cursor='default'
   wb.canvas.addEventListener('mousedown',function(e){
+    if(wb.locked)return
     if(wb.mode==='text'){var pos=getPos(e),text=document.getElementById('wb-text-input').value.trim();if(!text)return;wb.ctx.font='16px DM Sans,sans-serif';wb.ctx.fillStyle=wb.color;wb.ctx.fillText(text,pos.x,pos.y);saveBoard();return}
     wb.drawing=true;var pos=getPos(e);wb.lastX=pos.x;wb.lastY=pos.y;wb.ctx.beginPath();var r=wb.mode==='erase'?wb.eraseSize/2:wb.drawSize/2;wb.ctx.arc(pos.x,pos.y,r,0,Math.PI*2);wb.ctx.fillStyle=wb.mode==='erase'?getBgColor():wb.color;wb.ctx.fill()
   })
   wb.canvas.addEventListener('mousemove',function(e){
-    if(!wb.drawing)return;var pos=getPos(e);wb.ctx.beginPath();wb.ctx.moveTo(wb.lastX,wb.lastY);wb.ctx.lineTo(pos.x,pos.y);wb.ctx.strokeStyle=wb.mode==='erase'?getBgColor():wb.color;wb.ctx.lineWidth=wb.mode==='erase'?wb.eraseSize:wb.drawSize;wb.ctx.stroke();wb.lastX=pos.x;wb.lastY=pos.y;saveBoard()
+    if(wb.locked||!wb.drawing)return;var pos=getPos(e);wb.ctx.beginPath();wb.ctx.moveTo(wb.lastX,wb.lastY);wb.ctx.lineTo(pos.x,pos.y);wb.ctx.strokeStyle=wb.mode==='erase'?getBgColor():wb.color;wb.ctx.lineWidth=wb.mode==='erase'?wb.eraseSize:wb.drawSize;wb.ctx.stroke();wb.lastX=pos.x;wb.lastY=pos.y;saveBoard()
   })
   function stopDraw(){if(!wb.drawing)return;wb.drawing=false;localStorage.setItem('axis-whiteboard',wb.canvas.toDataURL())}
   wb.canvas.addEventListener('mouseup',stopDraw); wb.canvas.addEventListener('mouseleave',stopDraw)
-  wb.canvas.addEventListener('touchstart',function(e){e.preventDefault();wb.drawing=true;var pos=getPos(e);wb.lastX=pos.x;wb.lastY=pos.y},{passive:false})
-  wb.canvas.addEventListener('touchmove',function(e){e.preventDefault();if(!wb.drawing)return;var pos=getPos(e);wb.ctx.beginPath();wb.ctx.moveTo(wb.lastX,wb.lastY);wb.ctx.lineTo(pos.x,pos.y);wb.ctx.strokeStyle=wb.mode==='erase'?getBgColor():wb.color;wb.ctx.lineWidth=wb.mode==='erase'?wb.eraseSize:wb.drawSize;wb.ctx.stroke();wb.lastX=pos.x;wb.lastY=pos.y;saveBoard()},{passive:false})
+  wb.canvas.addEventListener('touchstart',function(e){if(wb.locked)return;e.preventDefault();wb.drawing=true;var pos=getPos(e);wb.lastX=pos.x;wb.lastY=pos.y},{passive:false})
+  wb.canvas.addEventListener('touchmove',function(e){if(wb.locked)return;e.preventDefault();if(!wb.drawing)return;var pos=getPos(e);wb.ctx.beginPath();wb.ctx.moveTo(wb.lastX,wb.lastY);wb.ctx.lineTo(pos.x,pos.y);wb.ctx.strokeStyle=wb.mode==='erase'?getBgColor():wb.color;wb.ctx.lineWidth=wb.mode==='erase'?wb.eraseSize:wb.drawSize;wb.ctx.stroke();wb.lastX=pos.x;wb.lastY=pos.y;saveBoard()},{passive:false})
   wb.canvas.addEventListener('touchend',function(e){e.preventDefault();stopDraw()})
   document.getElementById('wb-zoom-in').onclick=function(){wb.zoom=Math.min(3,wb.zoom+0.1);document.getElementById('wb-inner').style.transform='scale('+wb.zoom+')';document.getElementById('wb-zoom-label').textContent=Math.round(wb.zoom*100)+'%'}
   document.getElementById('wb-zoom-out').onclick=function(){wb.zoom=Math.max(0.25,wb.zoom-0.1);document.getElementById('wb-inner').style.transform='scale('+wb.zoom+')';document.getElementById('wb-zoom-label').textContent=Math.round(wb.zoom*100)+'%'}
@@ -2021,12 +2040,17 @@ document.getElementById('wb-clear').addEventListener('click',function(){if(!conf
 // ════════════════════════════════════════════════════════════
 //  NOTEPAD
 // ════════════════════════════════════════════════════════════
-var notepad={locked:false,saveTimer:null,syncTimer:null,loaded:false}
+var notepad={locked:true,saveTimer:null,syncTimer:null,loaded:false}
 
 function initNotepad(){
   if(notepad.loaded) return
   notepad.loaded=true
   var ta=document.getElementById('notepad-textarea')
+  // Start locked
+  ta.setAttribute('readonly','readonly')
+  ta.style.background='var(--cream2)'; ta.style.color='var(--brown3)'; ta.style.cursor='default'
+  var icon=document.getElementById('notepad-lock-icon'); var label=document.getElementById('notepad-lock-label'); var btn=document.getElementById('notepad-lock-btn')
+  icon.textContent='🔒'; label.textContent='Locked'; btn.style.background='var(--cream2)'; btn.style.color='var(--brown4)'
   // Load from localStorage immediately
   var local=localStorage.getItem('axis-notepad')
   if(local!=null) ta.value=local
@@ -2113,7 +2137,10 @@ function toggleNotepadLock(){
 //  INIT
 // ════════════════════════════════════════════════════════════
 var savedWb=localStorage.getItem('axis-whiteboard')
-var defaultView=(savedWb&&savedWb.length>500)?'whiteboard':'calendar'
+var savedNp=localStorage.getItem('axis-notepad')
+var hasWbContent=savedWb&&savedWb.length>500
+var hasNpContent=savedNp&&savedNp.trim().length>0
+var defaultView=(hasWbContent||hasNpContent)?'whiteboard':'calendar'
 switchView(defaultView)
 
 if(isJWTValid()){
