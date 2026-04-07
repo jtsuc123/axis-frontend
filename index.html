@@ -317,6 +317,23 @@ nav{flex:1;}
         </div>
         <canvas id="wb-canvas" style="display:none;"></canvas>
         <input type="text" id="wb-text-input" placeholder="Type here, then click canvas to place..." style="display:none;width:100%;padding:8px 12px;background:var(--cream2);border:1px solid var(--cream3);border-radius:8px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;margin-top:8px;">
+
+        <!-- NOTEPAD -->
+        <div id="notepad-section" style="margin-top:18px;">
+          <div style="background:var(--cream2);border:1px solid var(--cream3);border-radius:10px 10px 0 0;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:11px;font-weight:500;color:var(--brown4);letter-spacing:.07em;text-transform:uppercase;">Notes</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span id="notepad-saved-label" style="font-size:10px;color:var(--brown4);opacity:0;transition:opacity 0.4s;">Saved</span>
+              <button id="notepad-lock-btn" onclick="toggleNotepadLock()" style="display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:6px;border:1px solid var(--cream3);background:var(--cream);color:var(--brown3);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;transition:background 0.15s,color 0.15s;">
+                <span id="notepad-lock-icon">✏</span>
+                <span id="notepad-lock-label">Editing</span>
+              </button>
+            </div>
+          </div>
+          <textarea id="notepad-textarea"
+            placeholder="Type your notes here..."
+            style="display:block;width:100%;min-height:220px;box-sizing:border-box;padding:16px 18px;background:var(--cream);border:1px solid var(--cream3);border-top:none;border-radius:0 0 10px 10px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.7;outline:none;resize:vertical;transition:background 0.15s;"></textarea>
+        </div>
       </div>
 
       <!-- FINANCE -->
@@ -1835,7 +1852,7 @@ function switchView(v){
   document.querySelectorAll('.nav-item[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===v))
   document.querySelectorAll('.mobile-tab[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===v))
   if(window.innerWidth<=768){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('open')}
-  if(v==='whiteboard') setTimeout(()=>{if(!wb.initialized)initWhiteboard()},50)
+  if(v==='whiteboard') setTimeout(()=>{if(!wb.initialized)initWhiteboard();initNotepad()},50)
   if(v==='overview')   setGreeting()
   if(v==='finance')    loadFinanceData()
   if(v==='trash')      renderTrash()
@@ -1955,6 +1972,87 @@ document.getElementById('wb-custom-color').addEventListener('input',function(){w
 document.getElementById('wb-draw-size').addEventListener('change',function(){wb.drawSize=parseInt(this.value)})
 document.getElementById('wb-erase-size').addEventListener('change',function(){wb.eraseSize=parseInt(this.value)})
 document.getElementById('wb-clear').addEventListener('click',function(){if(!confirm('Clear the whiteboard?'))return;if(wb.ctx)wb.ctx.clearRect(0,0,2400,1800);localStorage.removeItem('axis-whiteboard');toast('Whiteboard cleared')})
+
+// ════════════════════════════════════════════════════════════
+//  NOTEPAD
+// ════════════════════════════════════════════════════════════
+var notepad={locked:false,saveTimer:null,syncTimer:null,loaded:false}
+
+function initNotepad(){
+  if(notepad.loaded) return
+  notepad.loaded=true
+  var ta=document.getElementById('notepad-textarea')
+  // Load from localStorage immediately
+  var local=localStorage.getItem('axis-notepad')
+  if(local!=null) ta.value=local
+  // Then fetch from server
+  if(navigator.onLine&&state.unlocked){
+    GET('/whiteboard/notepad').then(function(res){
+      if(!res?.success) return
+      var serverText=res.text||''
+      var localText=localStorage.getItem('axis-notepad')||''
+      // Keep whichever is longer (simple merge heuristic)
+      if(serverText.length>localText.length){
+        ta.value=serverText
+        localStorage.setItem('axis-notepad',serverText)
+      }
+    })
+  }
+  ta.addEventListener('input',function(){
+    if(notepad.locked) return
+    autoGrowNotepad(ta)
+    clearTimeout(notepad.saveTimer)
+    notepad.saveTimer=setTimeout(function(){
+      var txt=ta.value
+      localStorage.setItem('axis-notepad',txt)
+      clearTimeout(notepad.syncTimer)
+      notepad.syncTimer=setTimeout(function(){
+        if(navigator.onLine&&state.unlocked){
+          POST('/whiteboard/notepad',{text:txt}).then(function(r){
+            if(r?.success){
+              var lbl=document.getElementById('notepad-saved-label')
+              lbl.style.opacity='1'
+              setTimeout(function(){lbl.style.opacity='0'},1800)
+            }
+          })
+        }
+      },1500)
+    },600)
+  })
+}
+
+function autoGrowNotepad(ta){
+  ta.style.height='auto'
+  ta.style.height=Math.max(220,ta.scrollHeight)+'px'
+}
+
+function toggleNotepadLock(){
+  notepad.locked=!notepad.locked
+  var ta=document.getElementById('notepad-textarea')
+  var icon=document.getElementById('notepad-lock-icon')
+  var label=document.getElementById('notepad-lock-label')
+  var btn=document.getElementById('notepad-lock-btn')
+  if(notepad.locked){
+    ta.setAttribute('readonly','readonly')
+    ta.style.background='var(--cream2)'
+    ta.style.color='var(--brown3)'
+    ta.style.cursor='default'
+    icon.textContent='🔒'
+    label.textContent='Locked'
+    btn.style.background='var(--cream2)'
+    btn.style.color='var(--brown4)'
+  } else {
+    ta.removeAttribute('readonly')
+    ta.style.background='var(--cream)'
+    ta.style.color='var(--brown)'
+    ta.style.cursor='text'
+    icon.textContent='✏'
+    label.textContent='Editing'
+    btn.style.background='var(--cream)'
+    btn.style.color='var(--brown3)'
+    setTimeout(function(){ta.focus()},50)
+  }
+}
 
 // ════════════════════════════════════════════════════════════
 //  FAVICON
