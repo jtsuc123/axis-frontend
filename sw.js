@@ -1,4 +1,4 @@
-const CACHE = 'axis-v1.3'
+const CACHE = 'axis-v1.4'
 
 // ── INSTALL: cache only the app shell ────────────────────────
 self.addEventListener('install', e => {
@@ -6,10 +6,10 @@ self.addEventListener('install', e => {
     caches.open(CACHE).then(c =>
       // addAll individually so one miss doesn't kill the whole install
       Promise.allSettled([
-        c.add('/index.html'),
-        c.add('/manifest.json'),
-        c.add('/icon-192.png'),
-        c.add('/icon-512.png')
+        c.add('./index.html'),
+        c.add('./manifest.json'),
+        c.add('./icon-192.png'),
+        c.add('./icon-512.png')
       ])
     ).then(() => self.skipWaiting())
   )
@@ -74,8 +74,8 @@ self.addEventListener('push', function(e) {
   e.waitUntil(
     self.registration.showNotification(data.title || 'Axis', {
       body:  data.body  || '',
-      icon:  '/icon-192.png',
-      badge: '/icon-192.png',
+      icon:  './icon-192.png',
+      badge: './icon-192.png',
       tag:   data.tag   || 'axis-event'
     })
   )
