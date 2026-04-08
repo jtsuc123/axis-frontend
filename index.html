@@ -762,7 +762,7 @@ async function api(method, path, body) {
   if (body) opts.body = JSON.stringify(body)
   try {
     const res = await fetch(`${API}${path}`, opts)
-    if (res.status === 401) { clearJWT(); return null }
+    if (res.status === 401) { clearJWT(); if (!_initialLoad) showAuthOverlay(); return null }
     return res.json()
   } catch(e) { return null }
 }
@@ -777,6 +777,7 @@ const DELETE = path       => api('DELETE', path)
 var DECOY_POOL = ["phantom","archive","solstice","drift","ember","vault","lunar","tide","penelope","kate","mikayla","winnie","nadine","aaron","lolo","sophie","yancey","amber","julian","charlene","zoe","cheryl","ilyssa","cherry","abigail","copper","atlas","flint","haven","morse","cedar","prism","echo","north","signal","quill","iron","ridge","frost","grove","warden","cipher","delta","noble","slate","raven","stone","blade","mist","carve","tower","bloom","swift","dusk","coral","axiom","forge","pewter","justin","nike","qbi","jacinda","anna","stella","leia","maddie","orion","velvet","crimson","luna","felix","nova","jasper","ivy","sienna","zane","aria","knox","indigo","marble","zephyr","cleo","phoenix","briar","oscar","talia","rio","blaze","dahlia","cobalt","rhea","sage","titan","lyra","milo","onyx","piper","quinn","sol","theo","ursa","vance","wren","xena","yara","zuri","alder","bruno","cairo","delia","elara","finn","gaia","hugo","irene","juno","kira","leo","mira","nash","opal","paige","rex","skye","tess","vera","willow","xavier","yasmin","zack","basil","dante","elise","flora","gideon","hazel","isla","jett","kaia","logan","mabel","noel","olive","penny","quentin","rowan","selah","tristan","uma","valen","west","ximena","yosef","zelda","ash","brook","cliff","drew","evan","faye","gray","hope","ian","jade","kyle","lane","max","nina","otto","pearl","reid","shay","troy","vince","wade","yuki"]
 var INACTIVITY_MS = 30 * 60 * 1000
 var inactivityTimer = null
+var _initialLoad = true   // suppresses auth overlay during first data fetch
 var state = { data:null, view:'calendar', calOffset:0, editingTask:null, recurringOn:false, theme:localStorage.getItem('axis-theme')||'light', unlocked:false, pendingHighlight:null }
 var DAYS        = ['SUN','MON','TUE','WED','THU','FRI','SAT']
 var DAYS_FULL   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
@@ -1009,6 +1010,8 @@ async function loadData(silent) {
     document.getElementById('offline-banner').textContent='● Offline — showing last synced data'
     document.getElementById('loading').style.display='none'
     document.getElementById('app').classList.add('unlocked')
+  } finally {
+    _initialLoad = false
   }
 }
 
