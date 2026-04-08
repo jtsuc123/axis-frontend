@@ -760,9 +760,11 @@ async function api(method, path, body) {
   if (jwt) headers['Authorization'] = `Bearer ${jwt}`
   const opts = { method, headers }
   if (body) opts.body = JSON.stringify(body)
-  const res = await fetch(`${API}${path}`, opts)
-  if (res.status === 401) { clearJWT(); return null }
-  return res.json()
+  try {
+    const res = await fetch(`${API}${path}`, opts)
+    if (res.status === 401) { clearJWT(); return null }
+    return res.json()
+  } catch(e) { return null }
 }
 const GET    = path       => api('GET',    path)
 const POST   = (path, b)  => api('POST',   path, b)
