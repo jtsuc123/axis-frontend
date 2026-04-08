@@ -276,7 +276,6 @@ nav{flex:1;}
         <div class="sidebar-date" id="sidebar-date"></div>
       </div>
       <nav>
-        <div class="nav-item" data-view="overview"><div class="nav-dot"></div>Overview</div>
         <div class="nav-item" data-view="calendar"><div class="nav-dot"></div>Calendar</div>
         <div class="nav-item" data-view="whiteboard"><div class="nav-dot"></div>Whiteboard</div>
         <div class="nav-item" data-view="finance"><div class="nav-dot"></div>Finance</div>
@@ -294,27 +293,22 @@ nav{flex:1;}
     </div>
 
     <div id="main">
-      <!-- OVERVIEW -->
-      <div class="view" id="view-overview">
+      <!-- CALENDAR -->
+      <div class="view" id="view-calendar">
         <div class="section-hd">
           <div>
-            <h2 id="greeting" style="margin-bottom:2px;">Overview</h2>
+            <h2 id="greeting" style="margin-bottom:2px;">Calendar</h2>
             <div id="overview-date" style="font-size:12px;color:var(--brown4);"></div>
             <div id="overview-day" style="font-size:11px;color:var(--brown4);margin-top:1px;letter-spacing:0.05em;"></div>
           </div>
           <button class="btn btn-primary" onclick="openAddModal()" style="font-size:12px;padding:6px 14px;">+ Task</button>
         </div>
-        <div class="metrics">
+        <div class="metrics" style="margin-bottom:16px;">
           <div class="metric"><div class="metric-circle" style="background:var(--red-bg);"><span style="font-size:18px;color:var(--red);">!</span></div><div><div class="metric-label">Past due</div><div class="metric-val" style="color:var(--red);" id="m-pastdue">0</div></div></div>
           <div class="metric"><div class="metric-circle" style="background:var(--amber-bg);"><span style="font-size:16px;color:var(--amber);">◷</span></div><div><div class="metric-label">Today</div><div class="metric-val" style="color:var(--amber);" id="m-today">0</div></div></div>
           <div class="metric"><div class="metric-circle" style="background:var(--blue-bg);"><span style="font-size:16px;color:var(--blue);">▦</span></div><div><div class="metric-label">This week</div><div class="metric-val" style="color:var(--blue);" id="m-week">0</div></div></div>
         </div>
-        <div id="overview-tasks" style="margin-top:20px;"></div>
-      </div>
-
-      <!-- CALENDAR -->
-      <div class="view" id="view-calendar">
-        <div class="section-hd"><h2>Calendar</h2></div>
+        <div id="undated-tasks-section" style="margin-bottom:16px;"></div>
         <div style="display:flex;gap:6px;margin-bottom:16px;">
           <button class="cal-nav-btn" id="cal-prev">← Earlier</button>
           <button class="cal-nav-btn" id="cal-today-btn">Today</button>
@@ -646,7 +640,6 @@ nav{flex:1;}
 
   <div id="mobile-nav">
     <div class="mobile-nav-tabs">
-      <div class="mobile-tab" data-view="overview">Home</div>
       <div class="mobile-tab" data-view="calendar">Calendar</div>
       <div class="mobile-tab" data-view="whiteboard">Board</div>
       <div class="mobile-tab" data-view="finance">Finance</div>
@@ -1015,7 +1008,7 @@ async function loadData(silent) {
 }
 
 setInterval(()=>{ if(navigator.onLine&&state.unlocked&&!document.hidden) loadData(true) },60000)
-function renderAll() { renderOverview(); renderAgenda(); renderTrash(); populateTagSelect(); scheduleNotifications(); applyPendingHighlight() }
+function renderAll() { renderAgenda(); renderTrash(); populateTagSelect(); scheduleNotifications(); applyPendingHighlight() }
 
 function applyPendingHighlight() {
   if (!state.pendingHighlight) return
@@ -1040,7 +1033,7 @@ function applyPendingHighlight() {
 }
 
 // ════════════════════════════════════════════════════════════
-//  OVERVIEW
+//  TASK CATEGORISATION
 // ════════════════════════════════════════════════════════════
 function categorizeTasks() {
   if (!state.data) return {pastDue:[],today:[],tomorrow:[],future:[],undated:[]}
@@ -1059,7 +1052,7 @@ function categorizeTasks() {
 
 var AXIS_STAR_SVG='<svg width="16" height="16" viewBox="0 0 52 52" fill="none" style="flex-shrink:0;margin-top:1px;"><path d="M26 6 L30 22 L46 26 L30 30 L26 46 L22 30 L6 26 L22 22 Z" stroke="#BA7517" stroke-width="2.5" fill="rgba(186,117,23,0.15)" stroke-linejoin="round"/><circle cx="26" cy="26" r="4" fill="#BA7517"/></svg>'
 
-function renderOverview() {
+function renderCalendarHeader() {
   setGreeting()
   var cat=categorizeTasks()
   document.getElementById('m-pastdue').textContent=cat.pastDue.length
@@ -1073,18 +1066,12 @@ function renderOverview() {
       var uTagPill=''
       if(task.tag){var utc=tagColor(task.tag);uTagPill='<span class="task-tag" style="background:'+utc.bg+';color:'+utc.color+';">'+esc(task.tag)+'</span>'}
       html+='<div id="task-card-'+task.id+'" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cream3);cursor:pointer;" onclick="openEditTask(\''+task.id+'\')">'+AXIS_STAR_SVG
-      html+='<span style="font-size:13px;color:var(--brown);flex:1;">'+esc(task.name)+'</span>'
-      html+=uTagPill
+      html+='<div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;"><span style="font-size:13px;color:var(--brown);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'+uTagPill+'</div>'
       html+='<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button></div></div>'
     })
     html+='</div></div>'
   }
-  if(cat.pastDue.length)  {html+='<div class="task-group"><div class="section-label" style="color:var(--red);">Past due</div>';  cat.pastDue.forEach(t=>{html+=taskCardHTML(t,'pastdue')});  html+='</div>'}
-  if(cat.today.length)    {html+='<div class="task-group"><div class="section-label" style="color:var(--amber);">Today</div>';   cat.today.forEach(t=>{html+=taskCardHTML(t,'today')});     html+='</div>'}
-  if(cat.tomorrow.length) {html+='<div class="task-group"><div class="section-label">Tomorrow</div>';                            cat.tomorrow.forEach(t=>{html+=taskCardHTML(t,'tomorrow')});html+='</div>'}
-  if(cat.future.length)   {html+='<div class="task-group"><div class="section-label">Next 7 days</div>';                         cat.future.forEach(t=>{html+=taskCardHTML(t,'future')});    html+='</div>'}
-  if(!html) html='<div class="empty-state"><p>Nothing due this week.</p></div>'
-  document.getElementById('overview-tasks').innerHTML=html
+  document.getElementById('undated-tasks-section').innerHTML=html
 }
 
 function taskCardHTML(task,type){
@@ -1229,6 +1216,7 @@ function populateTagSelect() {
 //  CALENDAR
 // ════════════════════════════════════════════════════════════
 function renderAgenda() {
+  renderCalendarHeader()
   if(!state.data){document.getElementById('agenda-grid').innerHTML='<div class="empty-state"><p>No data.</p></div>';return}
   var todayTs=today().getTime(), todoTasks=state.data.todo||[]
   var tasksByDate={}
@@ -2014,7 +2002,6 @@ function switchView(v){
   document.querySelectorAll('.mobile-tab[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===v))
   if(window.innerWidth<=768){document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('open')}
   if(v==='whiteboard') setTimeout(()=>{if(!wb.initialized)initWhiteboard();initNotepad()},50)
-  if(v==='overview')   setGreeting()
   if(v==='finance')    loadFinanceData()
   if(v==='trash')      renderTrash()
 }
