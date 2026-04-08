@@ -1309,7 +1309,7 @@ function renderAgenda() {
       } else {
         html+='<div style="display:flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;background:rgba(15,110,86,0.18);border:1px solid rgba(15,110,86,0.3);flex-shrink:0;">'
         html+='<div style="width:5px;height:5px;border-radius:50%;background:#0F6E56;"></div>'
-        html+='<span style="font-size:10px;color:#3dbd9e;font-weight:500;letter-spacing:0.05em;">Free</span>'
+        html+='<span style="font-size:10px;color:#3dbd9e;font-weight:500;letter-spacing:0.05em;">Available</span>'
         html+='</div>'
       }
       html+='</div>'
@@ -1327,8 +1327,10 @@ function renderAgenda() {
           var noteGlyphToday=task.note&&task.note.trim()?'<span style="font-size:9px;color:rgba(186,117,23,0.55);flex-shrink:0;letter-spacing:-0.5px;font-weight:600;" title="Has note">≡</span>':''
           html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span style="font-size:10px;min-width:68px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+timeLabel+'</span>'
-          html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'">'+esc(task.name)+'</span>'
+          html+='<div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;">'
+          html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'
           html+=calTagToday+noteGlyphToday
+          html+='</div>'
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.6);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:auto;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="Delete">🗑</button>'
           html+='</div>'
         })
@@ -1351,8 +1353,10 @@ function renderAgenda() {
           var noteGlyph=task.note&&task.note.trim()?'<span style="font-size:9px;color:var(--brown4);flex-shrink:0;letter-spacing:-0.5px;font-weight:600;opacity:0.7;" title="Has note">≡</span>':''
           html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span class="agenda-time" style="color:var(--brown4);min-width:80px;white-space:nowrap;">'+timeLabel+'</span>'
-          html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'">'+esc(task.name)+'</span>'
+          html+='<div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;">'
+          html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'
           html+=calTag+noteGlyph
+          html+='</div>'
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:4px;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Delete">🗑</button>'
           html+='</div>'
         })
