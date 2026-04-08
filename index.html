@@ -935,16 +935,40 @@ function showTokenScreen() { document.getElementById('token-screen').classList.r
 function showResetScreen() { document.getElementById('token-screen').classList.add('hidden'); document.getElementById('reset-screen').classList.add('show') }
 
 async function sendResetCode() {
+  var btn = document.querySelector('#reset-screen .reset-btn')
+  var origText = btn ? btn.textContent : ''
+  if (btn) { btn.textContent = 'Sending...'; btn.disabled = true }
   const res = await POST('/auth/reset/send')
-  if (res?.sent) document.getElementById('reset-subtitle').textContent = 'Code sent to your email'
-  else toast('Failed to send code')
+  if (btn) { btn.textContent = origText; btn.disabled = false }
+  if (res?.sent) {
+    document.getElementById('reset-subtitle').textContent = 'Code sent — check your email'
+    document.getElementById('reset-code-input').focus()
+  } else {
+    toast(res?.error || 'Failed to send code')
+  }
 }
 async function verifyResetCode() {
   var code = document.getElementById('reset-code-input').value.trim()
   if (!code) { toast('Enter the code first'); return }
+  var btn = document.querySelector('#reset-screen .reset-btn')
+  if (btn) { btn.textContent = 'Verifying...'; btn.disabled = true }
   const res = await POST('/auth/reset/verify', {code})
-  if (res?.valid) { clearInterval(authClockInterval); document.getElementById('auth-overlay').classList.remove('show'); state.unlocked=true; startInactivityTimer(); initNotifications(); toast('Verified') }
-  else toast('Invalid code')
+  if (btn) { btn.textContent = 'Verify code'; btn.disabled = false }
+  if (res?.valid) {
+    if (res.jwt) setJWT(res.jwt)
+    clearInterval(authClockInterval)
+    if (window._shuffleInterval) cancelAnimationFrame(window._shuffleInterval)
+    if (window._rebuildInterval) clearInterval(window._rebuildInterval)
+    document.getElementById('auth-overlay').classList.remove('show')
+    state.unlocked = true
+    startInactivityTimer()
+    loadData(false)
+    initNotifications()
+    toast('Access granted')
+  } else {
+    toast(res?.error || 'Invalid code')
+    document.getElementById('reset-code-input').select()
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -995,15 +1019,24 @@ function renderAll() { renderOverview(); renderAgenda(); renderTrash(); populate
 
 function applyPendingHighlight() {
   if (!state.pendingHighlight) return
-  var id = state.pendingHighlight
+  var fullId = state.pendingHighlight
   state.pendingHighlight = null
-  setTimeout(function() {
-    var el = document.getElementById(id)
-    if (!el) return
-    el.scrollIntoView({ behavior:'smooth', block:'nearest' })
-    el.classList.add('orbit-flash')
-    setTimeout(function(){ el.classList.remove('orbit-flash') }, 1600)
-  }, 120)
+  var attempts = 0
+  function tryHighlight() {
+    var el = document.getElementById(fullId)
+    // Fallback: cal-task-X → task-card-X (task with no due date or out-of-range)
+    if (!el && fullId.startsWith('cal-task-')) {
+      el = document.getElementById('task-card-' + fullId.slice(9))
+    }
+    if (el) {
+      el.scrollIntoView({ behavior:'smooth', block:'center' })
+      el.classList.add('orbit-flash')
+      setTimeout(function(){ el.classList.remove('orbit-flash') }, 1600)
+    } else if (++attempts < 8) {
+      setTimeout(tryHighlight, 300)
+    }
+  }
+  setTimeout(tryHighlight, 200)
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1063,14 +1096,16 @@ function taskCardHTML(task,type){
   else dateStr=new Date(typeof task.due_date==='number'?task.due_date:parseInt(task.due_date)).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric',weekday:'long'})
   var tagPill=''
   if(task.tag){var tc=tagColor(task.tag);tagPill='<span class="task-tag" style="background:'+tc.bg+';color:'+tc.color+';">'+esc(task.tag)+'</span>'}
-  return '<div class="task-card" id="task-card-'+task.id+'" onclick="openEditTask(\''+task.id+'\')">'+
-    '<div style="position:relative;flex-shrink:0;">'+
-      '<div class="task-icon" style="background:'+c[0]+'"><div class="task-icon-inner" style="background:'+c[1]+'"></div></div>'+
-      (hasNote?'<div style="position:absolute;top:-2px;right:-2px;width:7px;height:7px;border-radius:50%;background:#BA7517;border:2px solid var(--cream);box-shadow:0 0 4px rgba(186,117,23,0.35);"></div>':'')+
+  return '<div class="task-card" id="task-card-'+task.id+'" onclick="openEditTask(\''+task.id+'\')" style="position:relative;overflow:hidden;">'+
+    (hasNote?'<div style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 10px 10px 0;border-color:transparent #BA7517 transparent transparent;border-radius:0 10px 0 0;opacity:0.7;" title="Has note"></div>':'')+
+    '<div class="task-icon" style="background:'+c[0]+';flex-shrink:0;"><div class="task-icon-inner" style="background:'+c[1]+'"></div></div>'+
+    '<div class="task-info">'+
+      '<div style="display:flex;align-items:center;gap:5px;">'+
+        '<div class="task-name'+doneCls+'" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</div>'+
+        tagPill+
+      '</div>'+
+      '<div class="task-meta">'+dateStr+'</div>'+
     '</div>'+
-    '<div class="task-info"><div class="task-name'+doneCls+'">'+esc(task.name)+'</div><div class="task-meta">'+dateStr+'</div></div>'+
-    tagPill+
-    (hasNote?'<span class="note-icon" title="Has note">✎</span>':'')+
     '<div class="task-actions">'+
     (task.completed?'<button class="task-action-btn" onclick="event.stopPropagation();uncompleteTask(\''+task.id+'\')" title="Undo">↩</button>':'<button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button>')+
     '<button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button>'+
@@ -1258,22 +1293,23 @@ function renderAgenda() {
         if(tk.end_time){var ep=tk.end_time.split(':'),eMin=parseInt(ep[0])*60+parseInt(ep[1]);return nowMins2>=tMin&&nowMins2<eMin}
         return nowMins2>=tMin&&nowMins2<tMin+60
       })
-      // Header row — date on left, status badge on right
-      html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
-      html+='<div style="display:flex;align-items:center;gap:6px;"><div style="width:7px;height:7px;border-radius:50%;background:#BA7517;flex-shrink:0;"></div><div class="agenda-day-title" style="color:#faf7f2;">TODAY — '+DAYS[d3.getDay()]+' '+MONTHS[d3.getMonth()].toUpperCase()+' '+d3.getDate()+'</div></div>'
+      // Header row — date + status badge inline
+      html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">'
+      html+='<div style="width:7px;height:7px;border-radius:50%;background:#BA7517;flex-shrink:0;"></div>'
+      html+='<div class="agenda-day-title" style="color:#faf7f2;">TODAY — '+DAYS[d3.getDay()]+' '+MONTHS[d3.getMonth()].toUpperCase()+' '+d3.getDate()+'</div>'
       if(currentEv){
-        html+='<div style="display:flex;align-items:center;gap:6px;padding:3px 8px 3px 6px;border-radius:20px;background:rgba(186,117,23,0.18);border:1px solid rgba(186,117,23,0.3);">'
-        html+='<div style="position:relative;width:14px;height:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">'
+        html+='<div style="display:flex;align-items:center;gap:5px;padding:2px 7px 2px 5px;border-radius:20px;background:rgba(186,117,23,0.18);border:1px solid rgba(186,117,23,0.3);flex-shrink:0;">'
+        html+='<div style="position:relative;width:13px;height:13px;display:flex;align-items:center;justify-content:center;">'
         html+='<div style="position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(186,117,23,0.5);animation:loadSonar 2s ease-out infinite;"></div>'
         html+='<div style="position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(186,117,23,0.3);animation:loadSonar 2s ease-out infinite 0.7s;"></div>'
-        html+='<svg width="12" height="12" viewBox="0 0 52 52" fill="none"><path d="M26 8 L29 21 L42 26 L29 31 L26 44 L23 31 L10 26 L23 21 Z" stroke="#BA7517" stroke-width="3" fill="rgba(186,117,23,0.25)" stroke-linejoin="round"/><circle cx="26" cy="26" r="3.5" fill="#BA7517"/></svg>'
+        html+='<svg width="11" height="11" viewBox="0 0 52 52" fill="none"><path d="M26 8 L29 21 L42 26 L29 31 L26 44 L23 31 L10 26 L23 21 Z" stroke="#BA7517" stroke-width="3" fill="rgba(186,117,23,0.25)" stroke-linejoin="round"/><circle cx="26" cy="26" r="3.5" fill="#BA7517"/></svg>'
         html+='</div>'
-        html+='<span style="font-size:10px;color:#BA7517;font-weight:500;letter-spacing:0.06em;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(currentEv.name)+(currentEv.end_time?' · until '+currentEv.end_time:'')+'</span>'
+        html+='<span style="font-size:10px;color:#BA7517;font-weight:500;letter-spacing:0.05em;max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(currentEv.name)+(currentEv.end_time?' · until '+currentEv.end_time:'')+'</span>'
         html+='</div>'
       } else {
-        html+='<div style="display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;background:rgba(15,110,86,0.18);border:1px solid rgba(15,110,86,0.3);">'
-        html+='<div style="width:6px;height:6px;border-radius:50%;background:#0F6E56;flex-shrink:0;"></div>'
-        html+='<span style="font-size:10px;color:#3dbd9e;font-weight:500;letter-spacing:0.06em;">Free</span>'
+        html+='<div style="display:flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;background:rgba(15,110,86,0.18);border:1px solid rgba(15,110,86,0.3);flex-shrink:0;">'
+        html+='<div style="width:5px;height:5px;border-radius:50%;background:#0F6E56;"></div>'
+        html+='<span style="font-size:10px;color:#3dbd9e;font-weight:500;letter-spacing:0.05em;">Free</span>'
         html+='</div>'
       }
       html+='</div>'
@@ -1288,11 +1324,11 @@ function renderAgenda() {
           var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':task.isRecurring?'':('openEditTask(\''+task.id+'\')')
           var calTagToday=''
           if(task.tag){calTagToday='<span style="font-size:9px;font-weight:500;padding:1px 6px;border-radius:20px;background:rgba(186,117,23,0.25);color:#BA7517;flex-shrink:0;">'+esc(task.tag)+'</span>'}
+          var noteGlyphToday=task.note&&task.note.trim()?'<span style="font-size:9px;color:rgba(186,117,23,0.55);flex-shrink:0;letter-spacing:-0.5px;font-weight:600;" title="Has note">≡</span>':''
           html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span style="font-size:10px;min-width:68px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'">'+esc(task.name)+'</span>'
-          html+=calTagToday
-          if(task.note&&task.note.trim()){html+='<div style="width:5px;height:5px;border-radius:50%;background:#BA7517;flex-shrink:0;opacity:0.7;" title="Has note"></div>'}
+          html+=calTagToday+noteGlyphToday
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.6);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:auto;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="Delete">🗑</button>'
           html+='</div>'
         })
@@ -1312,11 +1348,11 @@ function renderAgenda() {
           var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':task.isRecurring?'':('openEditTask(\''+task.id+'\')')
           var calTag=''
           if(task.tag){var ctc2=tagColor(task.tag);calTag='<span style="font-size:9px;font-weight:500;padding:1px 6px;border-radius:20px;background:'+ctc2.bg+';color:'+ctc2.color+';flex-shrink:0;">'+esc(task.tag)+'</span>'}
+          var noteGlyph=task.note&&task.note.trim()?'<span style="font-size:9px;color:var(--brown4);flex-shrink:0;letter-spacing:-0.5px;font-weight:600;opacity:0.7;" title="Has note">≡</span>':''
           html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span class="agenda-time" style="color:var(--brown4);min-width:80px;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'">'+esc(task.name)+'</span>'
-          html+=calTag
-          if(task.note&&task.note.trim()){html+='<div style="width:5px;height:5px;border-radius:50%;background:var(--amber);flex-shrink:0;opacity:0.6;" title="Has note"></div>'}
+          html+=calTag+noteGlyph
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:4px;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Delete">🗑</button>'
           html+='</div>'
         })
