@@ -1247,8 +1247,7 @@ function renderAgenda() {
 
     if(isToday){
       html+='<div class="agenda-today-card">'
-      html+='<div class="agenda-day-header" style="margin-bottom:10px;"><div style="width:7px;height:7px;border-radius:50%;background:#BA7517;flex-shrink:0;"></div><div class="agenda-day-title" style="color:#faf7f2;">TODAY — '+DAYS[d3.getDay()]+' '+MONTHS[d3.getMonth()].toUpperCase()+' '+d3.getDate()+'</div></div>'
-      // Current event / free indicator
+      // Current event / free indicator — computed before header so we can inline it
       var nowH2=new Date().getHours(), nowM2=new Date().getMinutes(), nowMins2=nowH2*60+nowM2
       var currentEv=todos.find(function(tk){
         var tt=tk.time||tk.due_time; if(!tt||tk.completed) return false
@@ -1256,19 +1255,21 @@ function renderAgenda() {
         if(tk.end_time){var ep=tk.end_time.split(':'),eMin=parseInt(ep[0])*60+parseInt(ep[1]);return nowMins2>=tMin&&nowMins2<eMin}
         return nowMins2>=tMin&&nowMins2<tMin+60
       })
+      // Header row — date on left, status badge on right
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+      html+='<div style="display:flex;align-items:center;gap:6px;"><div style="width:7px;height:7px;border-radius:50%;background:#BA7517;flex-shrink:0;"></div><div class="agenda-day-title" style="color:#faf7f2;">TODAY — '+DAYS[d3.getDay()]+' '+MONTHS[d3.getMonth()].toUpperCase()+' '+d3.getDate()+'</div></div>'
       if(currentEv){
-        html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:rgba(186,117,23,0.18);margin-bottom:10px;border:1px solid rgba(186,117,23,0.35);">'
-        html+='<div style="width:7px;height:7px;border-radius:50%;background:#BA7517;flex-shrink:0;animation:loadPulse 1.5s ease-in-out infinite;"></div>'
-        html+='<span style="font-size:10px;color:#BA7517;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;flex-shrink:0;">Now</span>'
-        html+='<span style="font-size:12px;color:#faf7f2;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(currentEv.name)+'</span>'
-        if(currentEv.end_time){html+='<span style="font-size:10px;color:rgba(186,117,23,0.7);flex-shrink:0;margin-left:auto;">until '+currentEv.end_time+'</span>'}
+        html+='<div style="display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;background:rgba(186,117,23,0.18);border:1px solid rgba(186,117,23,0.3);">'
+        html+='<div style="width:6px;height:6px;border-radius:50%;background:#BA7517;animation:loadPulse 1.5s ease-in-out infinite;flex-shrink:0;"></div>'
+        html+='<span style="font-size:10px;color:#BA7517;font-weight:500;letter-spacing:0.06em;max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(currentEv.name)+(currentEv.end_time?' · until '+currentEv.end_time:'')+'</span>'
         html+='</div>'
       } else {
-        html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:rgba(250,247,242,0.04);margin-bottom:10px;">'
-        html+='<div style="width:6px;height:6px;border-radius:50%;border:1.5px solid rgba(250,247,242,0.3);flex-shrink:0;"></div>'
-        html+='<span style="font-size:11px;color:rgba(250,247,242,0.45);">Free right now</span>'
+        html+='<div style="display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;background:rgba(15,110,86,0.18);border:1px solid rgba(15,110,86,0.3);">'
+        html+='<div style="width:6px;height:6px;border-radius:50%;background:#0F6E56;flex-shrink:0;"></div>'
+        html+='<span style="font-size:10px;color:#3dbd9e;font-weight:500;letter-spacing:0.06em;">Free</span>'
         html+='</div>'
       }
+      html+='</div>'
       if(!todos.length){
         html+='<div class="agenda-empty" style="color:rgba(250,247,242,0.4);">Nothing scheduled</div>'
       } else {
