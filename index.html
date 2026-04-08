@@ -138,6 +138,13 @@ nav{flex:1;}
 @keyframes loadSonar{0%{transform:scale(0.8);opacity:0.6}100%{transform:scale(3.4);opacity:0}}
 @keyframes loadPulse{0%,100%{opacity:0.5;transform:scale(0.92)}50%{opacity:1;transform:scale(1.1)}}
 @keyframes loadFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes loadDrift{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@media(min-width:769px){
+  #loading-orbital{transform:scale(1.6);transform-origin:center;}
+  #loading-text .load-title{font-size:52px!important;}
+  #loading-text .load-sub{font-size:13px!important;letter-spacing:0.2em!important;}
+  #loading{gap:56px;background:radial-gradient(ellipse at 50% 40%,rgba(186,117,23,0.07) 0%,#1e1a16 65%);}
+}
 #mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--cream2);border-top:1px solid var(--cream3);padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:50;}
 .mobile-nav-tabs{display:flex;overflow-x:auto;padding:0 12px;gap:4px;scrollbar-width:none;}
 .mobile-nav-tabs::-webkit-scrollbar{display:none;}
@@ -173,13 +180,13 @@ nav{flex:1;}
 @media(min-width:769px) and (max-width:1024px){:root{--sidebar-w:160px;}}
 @media(min-width:769px) and (max-width:900px){:root{--sidebar-w:140px;}#main{padding:20px 18px;}}
 @keyframes orbitFlash{0%{box-shadow:0 0 0 0 rgba(186,117,23,0.85);background:rgba(186,117,23,0.12);}60%{box-shadow:0 0 0 10px rgba(186,117,23,0.15);}100%{box-shadow:0 0 0 0 rgba(186,117,23,0);background:transparent;}}
-.orbit-flash{animation:orbitFlash 0.75s ease-out;outline:2px solid var(--amber);outline-offset:2px;border-radius:8px;}
+.orbit-flash{animation:orbitFlash 1.5s ease-out;outline:2px solid var(--amber);outline-offset:2px;border-radius:8px;}
 </style>
 </head>
 <body>
 
 <div id="loading">
-  <div style="position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center">
+  <div id="loading-orbital" style="position:relative;width:200px;height:200px;display:flex;align-items:center;justify-content:center">
     <!-- ambient glow -->
     <div style="position:absolute;inset:-40px;border-radius:50%;background:radial-gradient(circle,rgba(186,117,23,0.13) 0%,transparent 60%);pointer-events:none"></div>
     <!-- sonar rings -->
@@ -211,9 +218,9 @@ nav{flex:1;}
       </div>
     </div>
   </div>
-  <div style="animation:loadFadeUp 0.6s 0.4s ease both;opacity:0;text-align:center">
-    <div style="font-family:'DM Serif Display',serif;font-size:38px;color:#faf7f2;letter-spacing:0.04em;text-shadow:0 0 32px rgba(186,117,23,0.35)">Axis</div>
-    <div style="font-family:'DM Sans',sans-serif;font-size:11px;color:rgba(186,117,23,0.7);letter-spacing:0.14em;text-transform:uppercase;margin-top:4px">Personal OS</div>
+  <div id="loading-text" style="animation:loadFadeUp 0.6s 0.4s ease both;opacity:0;text-align:center">
+    <div class="load-title" style="font-family:'DM Serif Display',serif;font-size:38px;color:#faf7f2;letter-spacing:0.04em;text-shadow:0 0 32px rgba(186,117,23,0.35)">Axis</div>
+    <div class="load-sub" style="font-family:'DM Sans',sans-serif;font-size:11px;color:rgba(186,117,23,0.7);letter-spacing:0.14em;text-transform:uppercase;margin-top:4px">Personal OS</div>
   </div>
 </div>
 
@@ -631,6 +638,7 @@ nav{flex:1;}
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+        <button class="btn btn-danger" id="modal-delete" style="display:none;margin-right:auto;" onclick="modalDeleteTask()">Delete</button>
         <button class="btn btn-primary" id="modal-save">Save</button>
       </div>
     </div>
@@ -994,7 +1002,7 @@ function applyPendingHighlight() {
     if (!el) return
     el.scrollIntoView({ behavior:'smooth', block:'nearest' })
     el.classList.add('orbit-flash')
-    setTimeout(function(){ el.classList.remove('orbit-flash') }, 800)
+    setTimeout(function(){ el.classList.remove('orbit-flash') }, 1600)
   }, 120)
 }
 
@@ -1074,6 +1082,13 @@ async function uncompleteTask(id) { const r=await POST(`/tasks/${id}/uncomplete`
 async function deleteTask(id)      { const r=await DELETE(`/tasks/${id}`);              if(r?.success){toast('Moved to trash');loadData(true)}else toast('Error: '+r?.error) }
 async function deleteRecurring(id) { const r=await DELETE(`/tasks/recurring/${id}`);  if(r?.success){toast('Recurring deleted');loadData(true)}else toast('Error: '+r?.error) }
 
+async function modalDeleteTask() {
+  if(!state.editingTask) return
+  document.getElementById('task-modal').classList.remove('open')
+  await deleteTask(state.editingTask.id)
+  state.editingTask=null
+}
+
 function toggleRecurringFields(){
   var on=document.getElementById('f-recurring').checked
   document.getElementById('f-recurring-fields').style.display=on?'block':'none'
@@ -1082,6 +1097,7 @@ function toggleRecurringFields(){
 
 function openAddModal() {
   state.editingTask=null
+  document.getElementById('modal-delete').style.display='none'
   document.getElementById('modal-title').textContent='Add task'
   ;['f-name','f-note','f-time','f-start-time','f-end-time'].forEach(id=>document.getElementById(id).value='')
   document.getElementById('f-notify').value='10'
@@ -1104,6 +1120,7 @@ function openAddModal() {
 function openEditTask(id) {
   var task=(state.data?.todo||[]).find(t=>t.id===id); if(!task) return
   state.editingTask=task
+  document.getElementById('modal-delete').style.display='inline-flex'
   document.getElementById('modal-title').textContent='Edit task'
   document.getElementById('f-name').value=task.name||''
   document.getElementById('f-note').value=task.note||''
@@ -1231,6 +1248,27 @@ function renderAgenda() {
     if(isToday){
       html+='<div class="agenda-today-card">'
       html+='<div class="agenda-day-header" style="margin-bottom:10px;"><div style="width:7px;height:7px;border-radius:50%;background:#BA7517;flex-shrink:0;"></div><div class="agenda-day-title" style="color:#faf7f2;">TODAY — '+DAYS[d3.getDay()]+' '+MONTHS[d3.getMonth()].toUpperCase()+' '+d3.getDate()+'</div></div>'
+      // Current event / free indicator
+      var nowH2=new Date().getHours(), nowM2=new Date().getMinutes(), nowMins2=nowH2*60+nowM2
+      var currentEv=todos.find(function(tk){
+        var tt=tk.time||tk.due_time; if(!tt||tk.completed) return false
+        var tp=tt.split(':'), tMin=parseInt(tp[0])*60+parseInt(tp[1])
+        if(tk.end_time){var ep=tk.end_time.split(':'),eMin=parseInt(ep[0])*60+parseInt(ep[1]);return nowMins2>=tMin&&nowMins2<eMin}
+        return nowMins2>=tMin&&nowMins2<tMin+60
+      })
+      if(currentEv){
+        html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:rgba(186,117,23,0.18);margin-bottom:10px;border:1px solid rgba(186,117,23,0.35);">'
+        html+='<div style="width:7px;height:7px;border-radius:50%;background:#BA7517;flex-shrink:0;animation:loadPulse 1.5s ease-in-out infinite;"></div>'
+        html+='<span style="font-size:10px;color:#BA7517;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;flex-shrink:0;">Now</span>'
+        html+='<span style="font-size:12px;color:#faf7f2;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(currentEv.name)+'</span>'
+        if(currentEv.end_time){html+='<span style="font-size:10px;color:rgba(186,117,23,0.7);flex-shrink:0;margin-left:auto;">until '+currentEv.end_time+'</span>'}
+        html+='</div>'
+      } else {
+        html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:rgba(250,247,242,0.04);margin-bottom:10px;">'
+        html+='<div style="width:6px;height:6px;border-radius:50%;border:1.5px solid rgba(250,247,242,0.3);flex-shrink:0;"></div>'
+        html+='<span style="font-size:11px;color:rgba(250,247,242,0.45);">Free right now</span>'
+        html+='</div>'
+      }
       if(!todos.length){
         html+='<div class="agenda-empty" style="color:rgba(250,247,242,0.4);">Nothing scheduled</div>'
       } else {
@@ -1246,7 +1284,7 @@ function renderAgenda() {
           html+='<span style="font-size:10px;min-width:68px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'">'+esc(task.name)+'</span>'
           html+=calTagToday
-          html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.5);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:auto;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
+          html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.6);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:auto;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="Delete">🗑</button>'
           html+='</div>'
         })
       }
@@ -1269,7 +1307,7 @@ function renderAgenda() {
           html+='<span class="agenda-time" style="color:var(--brown4);min-width:80px;white-space:nowrap;">'+timeLabel+'</span>'
           html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'">'+esc(task.name)+'</span>'
           html+=calTag
-          html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:4px;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0\'" title="Delete">🗑</button>'
+          html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 6px;border-radius:5px;flex-shrink:0;margin-left:4px;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Delete">🗑</button>'
           html+='</div>'
         })
       }
