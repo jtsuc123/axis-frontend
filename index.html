@@ -287,7 +287,7 @@ nav{flex:1;}
       </div>
       <div class="sidebar-bottom">
         <button class="icon-btn" id="theme-toggle">☾ Dark mode</button>
-        <button class="icon-btn" id="refresh-btn">↺ Refresh</button>
+        <button class="icon-btn" id="lock-btn">⬤ Lock</button>
         <div style="font-size:10px;color:var(--brown4);padding:4px 10px;" id="last-updated"></div>
       </div>
     </div>
@@ -737,7 +737,7 @@ function scheduleNotifications() {
 //  CONFIG
 // ════════════════════════════════════════════════════════════
 const API         = 'https://axis-backend-tyy1.onrender.com/api'
-const APP_VERSION = 'v1.1'
+const APP_VERSION = 'v3.4'
 
 // ════════════════════════════════════════════════════════════
 //  JWT HELPERS
@@ -761,7 +761,7 @@ async function api(method, path, body) {
   const opts = { method, headers }
   if (body) opts.body = JSON.stringify(body)
   const res = await fetch(`${API}${path}`, opts)
-  if (res.status === 401) { clearJWT(); showAuthOverlay(); return null }
+  if (res.status === 401) { clearJWT(); return null }
   return res.json()
 }
 const GET    = path       => api('GET',    path)
@@ -854,8 +854,8 @@ function startAuthClock() {
 async function buildTokenGrid() {
   if (window._shuffleInterval) { cancelAnimationFrame(window._shuffleInterval); window._shuffleInterval=null }
   if (window._rebuildInterval) { clearInterval(window._rebuildInterval); window._rebuildInterval=null }
-  const data = await GET('/auth/token')
-  const validToken = data?.token || null
+  let validToken = null
+  try { const data = await GET('/auth/token'); validToken = data?.token || null } catch(e) {}
   var decoys = DECOY_POOL.filter(w=>w!==validToken).sort(()=>Math.random()-0.5)
   var tokens = validToken ? [validToken] : []
   for (var i=0; i<decoys.length && tokens.length<12; i++) tokens.push(decoys[i])
@@ -2053,7 +2053,7 @@ document.querySelectorAll('.nav-item[data-view]').forEach(el=>el.addEventListene
 document.querySelectorAll('.mobile-tab[data-view]').forEach(el=>el.addEventListener('click',()=>switchView(el.dataset.view)))
 document.getElementById('menu-toggle').addEventListener('click',()=>{document.getElementById('sidebar').classList.toggle('open');document.getElementById('sidebar-overlay').classList.toggle('open')})
 document.getElementById('sidebar-overlay').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('sidebar-overlay').classList.remove('open')})
-document.getElementById('refresh-btn').addEventListener('click',()=>loadData(false))
+document.getElementById('lock-btn').addEventListener('click',()=>lockApp())
 document.getElementById('nlp-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})
 document.getElementById('fin-tx-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})
 document.getElementById('outstanding-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')})
@@ -2286,19 +2286,13 @@ var hasNpContent=savedNp&&savedNp.trim().length>0
 var defaultView=(hasWbContent||hasNpContent)?'whiteboard':'calendar'
 switchView(defaultView)
 
-if(isJWTValid()){
-  state.unlocked=true
-  document.getElementById('loading').style.display='none'
-  document.getElementById('app').classList.add('unlocked')
-  loadData(false)
-  startInactivityTimer()
-  initNotifications()
-  if(defaultView==='whiteboard') setTimeout(()=>{if(!wb.initialized)initWhiteboard()},100)
-} else {
-  clearJWT()
-  document.getElementById('loading').style.display='none'
-  showAuthOverlay()
-}
+state.unlocked=true
+document.getElementById('loading').style.display='none'
+document.getElementById('app').classList.add('unlocked')
+loadData(false)
+startInactivityTimer()
+initNotifications()
+if(defaultView==='whiteboard') setTimeout(()=>{if(!wb.initialized)initWhiteboard()},100)
 </script>
 </body>
 </html>
