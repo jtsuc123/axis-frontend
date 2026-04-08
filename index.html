@@ -938,6 +938,7 @@ async function sendResetCode() {
   const res = await POST('/auth/reset/send')
   if (btn) { btn.textContent = origText; btn.disabled = false }
   if (res?.sent) {
+    window._resetSession = res.session
     document.getElementById('reset-subtitle').textContent = 'Code sent — check your email'
     document.getElementById('reset-code-input').focus()
   } else {
@@ -949,7 +950,7 @@ async function verifyResetCode() {
   if (!code) { toast('Enter the code first'); return }
   var btn = document.querySelector('#reset-screen .reset-btn')
   if (btn) { btn.textContent = 'Verifying...'; btn.disabled = true }
-  const res = await POST('/auth/reset/verify', {code})
+  const res = await POST('/auth/reset/verify', {code, session: window._resetSession})
   if (btn) { btn.textContent = 'Verify code'; btn.disabled = false }
   if (res?.valid) {
     if (res.jwt) setJWT(res.jwt)
