@@ -984,7 +984,7 @@ async function loadData(silent) {
   }
   try {
     const [tasksRes, recurringRes, trackerRes] = await Promise.all([GET('/tasks'), GET('/tasks/recurring'), GET('/tracker')])
-    if (!tasksRes) return
+    if (!tasksRes) { document.getElementById('offline-banner').style.display='none'; document.getElementById('loading').style.display='none'; return }
     state.data = {
       todo:      tasksRes.tasks        || [],
       recurring: recurringRes?.recurring || [],
@@ -2289,10 +2289,10 @@ switchView(defaultView)
 state.unlocked=true
 document.getElementById('loading').style.display='none'
 document.getElementById('app').classList.add('unlocked')
-loadData(false)
 startInactivityTimer()
 initNotifications()
 if(defaultView==='whiteboard') setTimeout(()=>{if(!wb.initialized)initWhiteboard()},100)
+if(isJWTValid()) { loadData(false) }
 </script>
 </body>
 </html>
