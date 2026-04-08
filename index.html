@@ -630,9 +630,11 @@ nav{flex:1;}
           <div class="form-group"><label class="form-label">End date</label><input type="date" class="form-input" id="f-end-date"></div>
         </div>
       </div>
-      <div class="modal-actions">
+      <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
         <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
         <button class="btn btn-danger" id="modal-delete" style="display:none;margin-right:auto;" onclick="modalDeleteTask()">Delete</button>
+        <button class="btn btn-secondary" id="modal-duplicate" style="display:none;" onclick="modalDuplicateTask()" title="Create a copy of this task">⧉ Duplicate</button>
+        <button class="btn btn-secondary" id="modal-make-recurring" style="display:none;" onclick="modalMakeRecurring()" title="Create a recurring version of this task">↺ Recurring</button>
         <button class="btn btn-primary" id="modal-save">Save</button>
       </div>
     </div>
@@ -1114,6 +1116,49 @@ async function modalDeleteTask() {
   state.editingTask=null
 }
 
+async function modalDuplicateTask() {
+  if(!state.editingTask) return
+  var t=state.editingTask
+  document.getElementById('task-modal').classList.remove('open')
+  var res=await POST('/tasks',{name:t.name+' (copy)',due_date:t.due_date||null,due_time:t.time||null,tag:t.tag||null,note:t.note||null,notify_before:t.notify_before||null})
+  if(res?.success){
+    toast('Duplicated')
+    state.pendingHighlight='cal-task-'+res.task.id
+    loadData(true)
+  } else toast('Error: '+res?.error)
+}
+
+function modalMakeRecurring() {
+  if(!state.editingTask) return
+  var t=state.editingTask
+  document.getElementById('task-modal').classList.remove('open')
+  // Re-open as Add modal but pre-filled with this task's name/tag and recurring toggled on
+  state.editingTask=null
+  document.getElementById('modal-delete').style.display='none'
+  document.getElementById('modal-duplicate').style.display='none'
+  document.getElementById('modal-make-recurring').style.display='none'
+  document.getElementById('modal-title').textContent='Add recurring'
+  document.getElementById('f-name').value=t.name||''
+  document.getElementById('f-note').value=''
+  document.getElementById('f-time').value=''
+  document.getElementById('f-tag').value=t.tag||''
+  document.getElementById('f-notify').value='10'
+  document.getElementById('f-notify-custom').style.display='none'
+  document.getElementById('f-recurring').checked=true
+  document.getElementById('f-recurring-fields').style.display='block'
+  document.getElementById('f-date-row').style.display='none'
+  document.getElementById('f-recurring-toggle-row').style.display='flex'
+  var td=new Date()
+  var ds=td.getFullYear()+'-'+String(td.getMonth()+1).padStart(2,'0')+'-'+String(td.getDate()).padStart(2,'0')
+  document.getElementById('f-start-date').value=ds
+  document.getElementById('f-start-time').value=t.time||''
+  document.getElementById('f-end-time').value=''
+  var te=new Date(td); te.setMonth(te.getMonth()+6)
+  document.getElementById('f-end-date').value=te.getFullYear()+'-'+String(te.getMonth()+1).padStart(2,'0')+'-'+String(te.getDate()).padStart(2,'0')
+  document.getElementById('task-modal').classList.add('open')
+  setTimeout(()=>document.getElementById('f-name').focus(),100)
+}
+
 function toggleRecurringFields(){
   var on=document.getElementById('f-recurring').checked
   document.getElementById('f-recurring-fields').style.display=on?'block':'none'
@@ -1123,6 +1168,8 @@ function toggleRecurringFields(){
 function openAddModal() {
   state.editingTask=null
   document.getElementById('modal-delete').style.display='none'
+  document.getElementById('modal-duplicate').style.display='none'
+  document.getElementById('modal-make-recurring').style.display='none'
   document.getElementById('modal-title').textContent='Add task'
   ;['f-name','f-note','f-time','f-start-time','f-end-time'].forEach(id=>document.getElementById(id).value='')
   document.getElementById('f-notify').value='10'
@@ -1146,6 +1193,8 @@ function openEditTask(id) {
   var task=(state.data?.todo||[]).find(t=>t.id===id); if(!task) return
   state.editingTask=task
   document.getElementById('modal-delete').style.display='inline-flex'
+  document.getElementById('modal-duplicate').style.display='inline-flex'
+  document.getElementById('modal-make-recurring').style.display='inline-flex'
   document.getElementById('modal-title').textContent='Edit task'
   document.getElementById('f-name').value=task.name||''
   document.getElementById('f-note').value=task.note||''
