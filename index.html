@@ -2292,7 +2292,7 @@ document.getElementById('app').classList.add('unlocked')
 startInactivityTimer()
 initNotifications()
 if(defaultView==='whiteboard') setTimeout(()=>{if(!wb.initialized)initWhiteboard()},100)
-if(isJWTValid()) { loadData(false) }
+loadData(false)
 </script>
 </body>
 </html>
