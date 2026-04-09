@@ -45,6 +45,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--brown)
 .auth-attempts{font-size:11px;color:var(--red);text-align:center;margin-bottom:12px;min-height:16px;}
 #reset-screen{display:none;}
 #reset-screen.show{display:block;}
+#device-screen{display:none;}
+#device-screen.show{display:block;}
 #token-screen.hidden{display:none;}
 .reset-input{width:100%;padding:10px 14px;background:var(--cream2);border:1px solid var(--cream3);border-radius:10px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:15px;text-align:center;letter-spacing:0.15em;outline:none;margin-bottom:12px;}
 .reset-btn{width:100%;padding:11px;background:var(--brown);color:var(--cream);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;margin-bottom:10px;}
@@ -252,6 +254,16 @@ nav{flex:1;}
       <button class="reset-btn" onclick="verifyResetCode()">Verify code</button>
       <button class="reset-btn" onclick="sendResetCode()" style="background:var(--cream2);color:var(--brown);border:1px solid var(--cream3);">Send code to email</button>
       <a class="reset-back" onclick="showTokenScreen()">← Back to token</a>
+    </div>
+    <div id="device-screen">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="display:inline-block;margin-bottom:14px;"><div class="auth-badge"><div class="auth-badge-dot"></div><span class="auth-badge-text">NEW DEVICE</span></div></div>
+        <div class="auth-title">Device verification</div>
+        <div class="auth-subtitle">Enter your master password to trust this device</div>
+      </div>
+      <input type="password" class="reset-input" id="device-pw-input" placeholder="Master password" onkeydown="if(event.key==='Enter')submitDevicePassword()">
+      <div class="auth-attempts" id="device-attempts"></div>
+      <button class="reset-btn" onclick="submitDevicePassword()">Trust this device</button>
     </div>
   </div>
 </div>
@@ -840,7 +852,7 @@ setGreeting()
 // ════════════════════════════════════════════════════════════
 //  AUTH
 // ════════════════════════════════════════════════════════════
-var wrongCount=0, authClockInterval=null
+var wrongCount=0, authClockInterval=null, _pendingJWT=null
 
 function showAuthOverlay() {
   state.unlocked=false; wrongCount=0; clearInactivityTimer()
@@ -897,21 +909,65 @@ function renderTokenGrid(tokens) {
   tick()
 }
 
+function isDeviceRecognized() {
+  var t = localStorage.getItem('axis-device-token')
+  if (!t) return false
+  try { var p = JSON.parse(atob(t.split('.')[1])); return p.trusted===true && p.exp*1000>Date.now() } catch(e) { return false }
+}
+
+function doUnlock() {
+  setJWT(_pendingJWT); _pendingJWT = null; wrongCount = 0
+  document.querySelector('.auth-card').classList.add('auth-card-blur')
+  setTimeout(function() {
+    clearInterval(authClockInterval)
+    if(window._shuffleInterval) cancelAnimationFrame(window._shuffleInterval)
+    if(window._rebuildInterval) clearInterval(window._rebuildInterval)
+    document.getElementById('auth-overlay').classList.remove('show')
+    document.querySelector('.auth-card').classList.remove('auth-card-blur')
+    state.unlocked=true; startInactivityTimer(); loadData(false); initNotifications()
+  }, 300)
+}
+
+function showDeviceScreen() {
+  document.getElementById('token-screen').classList.add('hidden')
+  document.getElementById('device-screen').classList.add('show')
+  document.getElementById('device-attempts').textContent = ''
+  setTimeout(function(){ document.getElementById('device-pw-input').focus() }, 100)
+}
+
+async function submitDevicePassword() {
+  var pw = document.getElementById('device-pw-input').value.trim()
+  if (!pw) return
+  var btn = document.querySelector('#device-screen .reset-btn')
+  var attemptsEl = document.getElementById('device-attempts')
+  btn.disabled = true; btn.textContent = 'Verifying...'
+  const res = await POST('/auth/device', { password: pw })
+  btn.disabled = false; btn.textContent = 'Trust this device'
+  if (res?.valid && res?.token) {
+    localStorage.setItem('axis-device-token', res.token)
+    document.getElementById('device-screen').classList.remove('show')
+    doUnlock()
+  } else {
+    attemptsEl.textContent = res?.error || 'Incorrect password'
+    document.getElementById('device-pw-input').value = ''
+    document.getElementById('device-pw-input').focus()
+    document.querySelector('.auth-card').style.animation = 'none'
+    setTimeout(()=>{ document.querySelector('.auth-card').style.animation = 'shake 0.4s ease' }, 10)
+  }
+}
+
 async function checkToken(word) {
   var allBtns=document.querySelectorAll('.token-btn')
   allBtns.forEach(b=>{b.disabled=true;b.style.opacity='0.6'})
   const data = await POST('/auth/verify', {token:word})
   if (data?.valid) {
-    setJWT(data.jwt); wrongCount=0
-    document.querySelector('.auth-card').classList.add('auth-card-blur')
-    setTimeout(function() {
-      clearInterval(authClockInterval)
-      if(window._shuffleInterval) cancelAnimationFrame(window._shuffleInterval)
-      if(window._rebuildInterval) clearInterval(window._rebuildInterval)
-      document.getElementById('auth-overlay').classList.remove('show')
-      document.querySelector('.auth-card').classList.remove('auth-card-blur')
-      state.unlocked=true; startInactivityTimer(); loadData(false); initNotifications()
-    }, 300)
+    _pendingJWT = data.jwt
+    if (isDeviceRecognized()) {
+      doUnlock()
+    } else {
+      allBtns.forEach(b=>{b.disabled=false;b.style.opacity=''})
+      showDeviceScreen()
+    }
   } else {
     wrongCount++
     document.querySelector('.auth-card').style.animation='none'
@@ -934,7 +990,7 @@ async function checkToken(word) {
   }
 }
 
-function showTokenScreen() { document.getElementById('token-screen').classList.remove('hidden'); document.getElementById('reset-screen').classList.remove('show'); buildTokenGrid() }
+function showTokenScreen() { document.getElementById('token-screen').classList.remove('hidden'); document.getElementById('reset-screen').classList.remove('show'); document.getElementById('device-screen').classList.remove('show'); buildTokenGrid() }
 function showResetScreen() { document.getElementById('token-screen').classList.add('hidden'); document.getElementById('reset-screen').classList.add('show') }
 
 async function sendResetCode() {
