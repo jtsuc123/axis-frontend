@@ -47,6 +47,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--brown)
 #reset-screen.show{display:block;}
 #device-screen{display:none;}
 #device-screen.show{display:block;}
+#master-reset-screen{display:none;}
+#master-reset-screen.show{display:block;}
 #token-screen.hidden{display:none;}
 .reset-input{width:100%;padding:10px 14px;background:var(--cream2);border:1px solid var(--cream3);border-radius:10px;color:var(--brown);font-family:'DM Sans',sans-serif;font-size:15px;text-align:center;letter-spacing:0.15em;outline:none;margin-bottom:12px;}
 .reset-btn{width:100%;padding:11px;background:var(--brown);color:var(--cream);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;margin-bottom:10px;}
@@ -252,7 +254,7 @@ nav{flex:1;}
       </div>
       <input type="text" class="reset-input" id="reset-code-input" placeholder="000000" maxlength="6">
       <button class="reset-btn" onclick="verifyResetCode()">Verify code</button>
-      <button class="reset-btn" onclick="sendResetCode()" style="background:var(--cream2);color:var(--brown);border:1px solid var(--cream3);">Send code to email</button>
+      <button id="reset-send-btn" class="reset-btn" onclick="sendResetCode()" style="background:var(--cream2);color:var(--brown);border:1px solid var(--cream3);">Send code to email</button>
       <a class="reset-back" onclick="showTokenScreen()">← Back to token</a>
     </div>
     <div id="device-screen">
@@ -264,6 +266,20 @@ nav{flex:1;}
       <input type="password" class="reset-input" id="device-pw-input" placeholder="Master password" onkeydown="if(event.key==='Enter')submitDevicePassword()">
       <div class="auth-attempts" id="device-attempts"></div>
       <button class="reset-btn" onclick="submitDevicePassword()">Trust this device</button>
+      <a class="reset-back" onclick="showMasterResetScreen()">Forgot master password? →</a>
+    </div>
+    <div id="master-reset-screen">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="display:inline-block;margin-bottom:14px;"><div class="auth-badge"><div class="auth-badge-dot"></div><span class="auth-badge-text">MASTER RESET</span></div></div>
+        <div class="auth-title">Reset master password</div>
+        <div class="auth-subtitle" id="master-reset-subtitle">A code will be sent to your email</div>
+      </div>
+      <input type="text" class="reset-input" id="master-reset-code-input" placeholder="000000" maxlength="6" style="display:none;" onkeydown="if(event.key==='Enter')verifyMasterResetCode()">
+      <input type="password" class="reset-input" id="master-new-pw-input" placeholder="New master password" style="display:none;" onkeydown="if(event.key==='Enter')submitNewMasterPassword()">
+      <button id="master-verify-btn" class="reset-btn" onclick="verifyMasterResetCode()" style="display:none;">Verify code</button>
+      <button id="master-set-btn" class="reset-btn" onclick="submitNewMasterPassword()" style="display:none;">Set new password</button>
+      <button id="master-send-btn" class="reset-btn" onclick="sendMasterResetCode()" style="background:var(--cream2);color:var(--brown);border:1px solid var(--cream3);">Send code to email</button>
+      <a class="reset-back" onclick="showDeviceScreen()">← Back</a>
     </div>
   </div>
 </div>
@@ -930,6 +946,7 @@ function doUnlock() {
 
 function showDeviceScreen() {
   document.getElementById('token-screen').classList.add('hidden')
+  document.getElementById('master-reset-screen').classList.remove('show')
   document.getElementById('device-screen').classList.add('show')
   document.getElementById('device-attempts').textContent = ''
   setTimeout(function(){ document.getElementById('device-pw-input').focus() }, 100)
@@ -956,6 +973,81 @@ async function submitDevicePassword() {
   }
 }
 
+var _masterResetSession = null
+
+function showMasterResetScreen() {
+  document.getElementById('device-screen').classList.remove('show')
+  document.getElementById('master-reset-screen').classList.add('show')
+  document.getElementById('master-reset-subtitle').textContent = 'A code will be sent to your email'
+  document.getElementById('master-reset-subtitle').style.color = ''
+  document.getElementById('master-reset-code-input').style.display = 'none'
+  document.getElementById('master-reset-code-input').value = ''
+  document.getElementById('master-new-pw-input').style.display = 'none'
+  document.getElementById('master-new-pw-input').value = ''
+  document.getElementById('master-verify-btn').style.display = 'none'
+  document.getElementById('master-set-btn').style.display = 'none'
+  document.getElementById('master-send-btn').style.display = 'block'
+}
+
+async function sendMasterResetCode() {
+  var btn = document.getElementById('master-send-btn')
+  var subtitle = document.getElementById('master-reset-subtitle')
+  btn.textContent = 'Sending...'; btn.disabled = true
+  const res = await POST('/auth/master/send')
+  btn.textContent = 'Send code to email'; btn.disabled = false
+  if (res?.sent) {
+    _masterResetSession = res.session
+    subtitle.textContent = 'Code sent — check your email'; subtitle.style.color = ''
+    document.getElementById('master-reset-code-input').style.display = 'block'
+    document.getElementById('master-verify-btn').style.display = 'block'
+    document.getElementById('master-send-btn').style.display = 'none'
+    document.getElementById('master-reset-code-input').focus()
+  } else {
+    subtitle.textContent = res?.error || 'Failed to send code'; subtitle.style.color = 'var(--red)'
+  }
+}
+
+async function verifyMasterResetCode() {
+  var code = document.getElementById('master-reset-code-input').value.trim()
+  if (!code) return
+  var btn = document.getElementById('master-verify-btn')
+  var subtitle = document.getElementById('master-reset-subtitle')
+  btn.textContent = 'Verifying...'; btn.disabled = true
+  const res = await POST('/auth/master/verify', { code, session: _masterResetSession })
+  btn.textContent = 'Verify code'; btn.disabled = false
+  if (res?.valid) {
+    window._masterResetToken = res.resetToken
+    subtitle.textContent = 'Code verified — enter your new master password'; subtitle.style.color = ''
+    document.getElementById('master-reset-code-input').style.display = 'none'
+    document.getElementById('master-verify-btn').style.display = 'none'
+    document.getElementById('master-new-pw-input').style.display = 'block'
+    document.getElementById('master-set-btn').style.display = 'block'
+    document.getElementById('master-new-pw-input').focus()
+  } else {
+    subtitle.textContent = res?.error || 'Invalid code'; subtitle.style.color = 'var(--red)'
+    document.getElementById('master-reset-code-input').select()
+  }
+}
+
+async function submitNewMasterPassword() {
+  var pw = document.getElementById('master-new-pw-input').value.trim()
+  if (!pw) return
+  var btn = document.getElementById('master-set-btn')
+  var subtitle = document.getElementById('master-reset-subtitle')
+  btn.textContent = 'Saving...'; btn.disabled = true
+  const res = await POST('/auth/master/reset', { resetToken: window._masterResetToken, newPassword: pw })
+  btn.textContent = 'Set new password'; btn.disabled = false
+  if (res?.success) {
+    document.getElementById('master-reset-screen').classList.remove('show')
+    document.getElementById('device-screen').classList.add('show')
+    document.getElementById('device-attempts').textContent = 'Master password updated — enter it below'
+    document.getElementById('device-pw-input').value = ''
+    document.getElementById('device-pw-input').focus()
+  } else {
+    subtitle.textContent = res?.error || 'Failed to save'; subtitle.style.color = 'var(--red)'
+  }
+}
+
 async function checkToken(word) {
   var allBtns=document.querySelectorAll('.token-btn')
   allBtns.forEach(b=>{b.disabled=true;b.style.opacity='0.6'})
@@ -971,40 +1063,50 @@ async function checkToken(word) {
   } else {
     wrongCount++
     document.querySelector('.auth-card').style.animation='none'
-    setTimeout(()=>{document.querySelector('.auth-card').style.animation='shake 0.4s ease'},10)
-    var lockSecs = wrongCount * 3
+    setTimeout(()=>{ document.querySelector('.auth-card').style.animation='shake 0.4s ease' }, 10)
+    var lockSecs = wrongCount <= 1 ? 0 : (wrongCount - 1) * 3
     var attemptsEl = document.getElementById('auth-attempts')
-    if (lockSecs>0) {
-      allBtns.forEach(b=>{b.disabled=true;b.style.opacity='0.4';b.style.cursor='none'})
+    var refreshBtn = document.querySelector('#token-screen button[onclick="buildTokenGrid()"]')
+    if (lockSecs > 0) {
+      allBtns.forEach(b=>{ b.disabled=true; b.style.opacity='0.4' })
+      if (refreshBtn) { refreshBtn.disabled=true; refreshBtn.style.opacity='0.4' }
+      if (window._rebuildInterval) { clearInterval(window._rebuildInterval); window._rebuildInterval=null }
       var remaining=lockSecs
       attemptsEl.textContent='Too many attempts — locked for '+remaining+'s'
       var countdown=setInterval(function() {
         remaining--
-        if(remaining>0) { attemptsEl.textContent='Too many attempts — locked for '+remaining+'s' }
-        else { clearInterval(countdown); attemptsEl.textContent=''; allBtns.forEach(b=>{b.disabled=false;b.style.opacity='';b.style.cursor='none'}); buildTokenGrid() }
-      },1000)
+        if (remaining>0) { attemptsEl.textContent='Too many attempts — locked for '+remaining+'s' }
+        else {
+          clearInterval(countdown); attemptsEl.textContent=''
+          allBtns.forEach(b=>{ b.disabled=false; b.style.opacity='' })
+          if (refreshBtn) { refreshBtn.disabled=false; refreshBtn.style.opacity='' }
+          buildTokenGrid()
+        }
+      }, 1000)
     } else {
-      allBtns.forEach(b=>{b.disabled=false;b.style.opacity='';b.style.cursor='none'})
-      setTimeout(()=>buildTokenGrid(),500)
+      allBtns.forEach(b=>{ b.disabled=false; b.style.opacity='' })
+      setTimeout(()=>buildTokenGrid(), 400)
     }
   }
 }
 
-function showTokenScreen() { document.getElementById('token-screen').classList.remove('hidden'); document.getElementById('reset-screen').classList.remove('show'); document.getElementById('device-screen').classList.remove('show'); buildTokenGrid() }
+function showTokenScreen() { document.getElementById('token-screen').classList.remove('hidden'); document.getElementById('reset-screen').classList.remove('show'); document.getElementById('device-screen').classList.remove('show'); document.getElementById('master-reset-screen').classList.remove('show'); buildTokenGrid() }
 function showResetScreen() { document.getElementById('token-screen').classList.add('hidden'); document.getElementById('reset-screen').classList.add('show') }
 
 async function sendResetCode() {
-  var btn = document.querySelector('#reset-screen .reset-btn')
-  var origText = btn ? btn.textContent : ''
+  var btn = document.getElementById('reset-send-btn')
+  var subtitle = document.getElementById('reset-subtitle')
   if (btn) { btn.textContent = 'Sending...'; btn.disabled = true }
   const res = await POST('/auth/reset/send')
-  if (btn) { btn.textContent = origText; btn.disabled = false }
+  if (btn) { btn.textContent = 'Send code to email'; btn.disabled = false }
   if (res?.sent) {
     window._resetSession = res.session
-    document.getElementById('reset-subtitle').textContent = 'Code sent — check your email'
+    subtitle.textContent = 'Code sent — check your email'
+    subtitle.style.color = ''
     document.getElementById('reset-code-input').focus()
   } else {
-    toast(res?.error || 'Failed to send code')
+    subtitle.textContent = res?.error || 'Failed to send code'
+    subtitle.style.color = 'var(--red)'
   }
 }
 async function verifyResetCode() {
