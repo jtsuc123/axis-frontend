@@ -1,4 +1,4 @@
-const CACHE = 'axis-v1.5'
+const CACHE = 'axis-v1.6'
 
 // ── INSTALL: cache only the app shell ────────────────────────
 self.addEventListener('install', e => {
