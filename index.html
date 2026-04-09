@@ -180,7 +180,7 @@ nav{flex:1;}
 @media(min-width:769px) and (max-width:1024px){:root{--sidebar-w:160px;}}
 @media(min-width:769px) and (max-width:900px){:root{--sidebar-w:140px;}#main{padding:20px 18px;}}
 @keyframes orbitFlash{0%{box-shadow:0 0 0 0 rgba(186,117,23,0.85);background:rgba(186,117,23,0.12);}60%{box-shadow:0 0 0 10px rgba(186,117,23,0.15);}100%{box-shadow:0 0 0 0 rgba(186,117,23,0);background:transparent;}}
-.orbit-flash{animation:orbitFlash 1.5s ease-out;outline:2px solid var(--amber);outline-offset:2px;border-radius:8px;}
+.orbit-flash{animation:orbitFlash 2s ease-out;outline:2px solid var(--amber);outline-offset:2px;border-radius:8px;}
 </style>
 </head>
 <body>
@@ -304,9 +304,9 @@ nav{flex:1;}
           <button class="btn btn-primary" onclick="openAddModal()" style="font-size:12px;padding:6px 14px;">+ Task</button>
         </div>
         <div class="metrics" style="margin-bottom:16px;">
-          <div class="metric"><div class="metric-circle" style="background:var(--red-bg);"><span style="font-size:18px;color:var(--red);">!</span></div><div><div class="metric-label">Past due</div><div class="metric-val" style="color:var(--red);" id="m-pastdue">0</div></div></div>
-          <div class="metric"><div class="metric-circle" style="background:var(--amber-bg);"><span style="font-size:16px;color:var(--amber);">◷</span></div><div><div class="metric-label">Today</div><div class="metric-val" style="color:var(--amber);" id="m-today">0</div></div></div>
-          <div class="metric"><div class="metric-circle" style="background:var(--blue-bg);"><span style="font-size:16px;color:var(--blue);">▦</span></div><div><div class="metric-label">This week</div><div class="metric-val" style="color:var(--blue);" id="m-week">0</div></div></div>
+          <div class="metric" onclick="jumpToMetricTask('pastdue')" style="cursor:pointer;"><div class="metric-circle" style="background:var(--red-bg);"><span style="font-size:18px;color:var(--red);">!</span></div><div><div class="metric-label">Past due</div><div class="metric-val" style="color:var(--red);" id="m-pastdue">0</div></div></div>
+          <div class="metric" onclick="jumpToMetricTask('today')" style="cursor:pointer;"><div class="metric-circle" style="background:var(--amber-bg);"><span style="font-size:16px;color:var(--amber);">◷</span></div><div><div class="metric-label">Today</div><div class="metric-val" style="color:var(--amber);" id="m-today">0</div></div></div>
+          <div class="metric" onclick="jumpToMetricTask('upcoming')" style="cursor:pointer;"><div class="metric-circle" style="background:var(--blue-bg);"><span style="font-size:16px;color:var(--blue);">▦</span></div><div><div class="metric-label">This week</div><div class="metric-val" style="color:var(--blue);" id="m-week">0</div></div></div>
         </div>
         <div id="undated-tasks-section" style="margin-bottom:16px;"></div>
         <div style="display:flex;gap:6px;margin-bottom:16px;">
@@ -723,13 +723,18 @@ function scheduleNotifications() {
     var fireAt = d.getTime() - task.notify_before * 60000
     var delay  = fireAt - now
     if (delay < 0 || delay > 7 * 86400000) return
-    scheduledNotifs[task.id] = setTimeout(function() {
-      new Notification('Axis — ' + task.name, {
-        body: 'Starting at ' + task.time,
-        icon: '/favicon.ico',
-        tag:  'axis-' + task.id
-      })
-    }, delay)
+    ;(function(t) {
+      scheduledNotifs[t.id] = setTimeout(function() {
+        var payload = { title: 'Axis — ' + t.name, body: 'Starting at ' + t.time, tag: 'axis-' + t.id }
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready.then(function(reg) {
+            reg.showNotification(payload.title, { body: payload.body, icon: '/icon-192.png', tag: payload.tag })
+          }).catch(function() { new Notification(payload.title, { body: payload.body, icon: '/favicon.ico', tag: payload.tag }) })
+        } else {
+          new Notification(payload.title, { body: payload.body, icon: '/favicon.ico', tag: payload.tag })
+        }
+      }, delay)
+    })(task)
   })
 }
 
@@ -911,7 +916,7 @@ async function checkToken(word) {
     wrongCount++
     document.querySelector('.auth-card').style.animation='none'
     setTimeout(()=>{document.querySelector('.auth-card').style.animation='shake 0.4s ease'},10)
-    var lockSecs = wrongCount<=1 ? 0 : wrongCount*3
+    var lockSecs = wrongCount * 3
     var attemptsEl = document.getElementById('auth-attempts')
     if (lockSecs>0) {
       allBtns.forEach(b=>{b.disabled=true;b.style.opacity='0.4';b.style.cursor='none'})
@@ -1032,12 +1037,43 @@ function applyPendingHighlight() {
     if (el) {
       el.scrollIntoView({ behavior:'smooth', block:'center' })
       el.classList.add('orbit-flash')
-      setTimeout(function(){ el.classList.remove('orbit-flash') }, 1600)
+      setTimeout(function(){ el.classList.remove('orbit-flash') }, 2100)
     } else if (++attempts < 8) {
       setTimeout(tryHighlight, 300)
     }
   }
   setTimeout(tryHighlight, 200)
+}
+
+function jumpToCalTask(taskId, due_date) {
+  if (!taskId) return
+  var todayTs = today().getTime()
+  var dd = typeof due_date === 'number' ? due_date : parseInt(due_date || '0')
+  var d = new Date(dd); d.setHours(0,0,0,0); dd = d.getTime()
+  var daysDiff = Math.round((dd - todayTs) / 86400000)
+  var cur = state.calOffset
+  var inRange = daysDiff >= -2 + cur*44 && daysDiff <= 86 + cur*44
+  if (!inRange) {
+    state.calOffset = Math.floor((daysDiff + 2) / 44)
+    renderAgenda()
+  }
+  state.pendingHighlight = 'cal-task-' + taskId
+  applyPendingHighlight()
+}
+
+function jumpToMetricTask(type) {
+  var cat = categorizeTasks()
+  var task = null
+  if (type === 'pastdue') {
+    // most overdue = earliest due_date = first in pastDue (sorted ascending)
+    task = cat.pastDue[0] || null
+  } else if (type === 'today') {
+    task = cat.today[0] || null
+  } else if (type === 'upcoming') {
+    task = cat.tomorrow[0] || cat.future[0] || null
+  }
+  if (!task) return
+  jumpToCalTask(task.id, task.due_date)
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1371,6 +1407,7 @@ function renderAgenda() {
           html+='<span style="font-size:10px;min-width:68px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+timeLabel+'</span>'
           html+=calTagToday+noteGlyphToday
           html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'
+          html+=(!task.isRecurring&&!task.isTracker?'<button onclick="event.stopPropagation();'+(task.completed?'uncompleteTask':'completeTask')+'(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:'+(task.completed?'rgba(15,110,86,0.9)':'rgba(250,247,242,0.6)')+';font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="'+(task.completed?'Undo done':'Done')+'">✓</button>':'')
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.6);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="Delete">🗑</button>'
           html+='</div>'
         })
@@ -1394,6 +1431,7 @@ function renderAgenda() {
           html+='<span class="agenda-time" style="color:var(--brown4);min-width:80px;white-space:nowrap;">'+timeLabel+'</span>'
           html+=calTag+noteGlyph
           html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'
+          html+=(!task.isRecurring&&!task.isTracker?'<button onclick="event.stopPropagation();'+(task.completed?'uncompleteTask':'completeTask')+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:'+(task.completed?'var(--green)':'var(--brown4)')+';font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="'+(task.completed?'Undo done':'Done')+'">✓</button>':'')
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Delete">🗑</button>'
           html+='</div>'
         })
