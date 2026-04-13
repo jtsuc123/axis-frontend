@@ -1683,20 +1683,8 @@ function updateFxLabel(){
 }
 
 async function loadFxRates(){
-  try {
-    const [fxRes, twdRes] = await Promise.all([
-      fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=EUR,JPY,GBP,AUD,SGD,HKD,KRW'),
-      fetch('https://open.er-api.com/v6/latest/USD')
-    ])
-    const fxData  = await fxRes.json()
-    const twdData = await twdRes.json()
-    const usdToTwd = twdData?.rates?.TWD || FX_FALLBACK.USD
-    const rates = Object.assign({},FX_FALLBACK,{TWD:1,USD:usdToTwd})
-    Object.keys(fxData?.rates||{}).forEach(cur=>{rates[cur]=usdToTwd/fxData.rates[cur]})
-    finState.fxRates=rates
-  } catch(e) {
-    finState.fxRates=Object.assign({},FX_FALLBACK)
-  }
+  const res=await GET('/finance/fx')
+  finState.fxRates=(res?.success&&res.rates)?res.rates:Object.assign({},FX_FALLBACK)
   updateFxLabel(); renderFinanceAll()
 }
 
