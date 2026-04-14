@@ -867,7 +867,7 @@ setGreeting()
 // ════════════════════════════════════════════════════════════
 //  AUTH
 // ════════════════════════════════════════════════════════════
-var wrongCount=0, authClockInterval=null, _pendingJWT=null
+var wrongCount=0, deviceWrongCount=0, authClockInterval=null, _pendingJWT=null
 
 function showAuthOverlay() {
   state.unlocked=false; wrongCount=0; clearInactivityTimer()
@@ -931,7 +931,7 @@ function isDeviceRecognized() {
 }
 
 function doUnlock() {
-  setJWT(_pendingJWT); _pendingJWT = null; wrongCount = 0
+  setJWT(_pendingJWT); _pendingJWT = null; wrongCount = 0; deviceWrongCount = 0
   document.querySelector('.auth-card').classList.add('auth-card-blur')
   setTimeout(function() {
     clearInterval(authClockInterval)
@@ -964,11 +964,26 @@ async function submitDevicePassword() {
     document.getElementById('device-screen').classList.remove('show')
     doUnlock()
   } else {
-    attemptsEl.textContent = res?.error || 'Incorrect password'
+    deviceWrongCount++
     document.getElementById('device-pw-input').value = ''
-    document.getElementById('device-pw-input').focus()
     document.querySelector('.auth-card').style.animation = 'none'
     setTimeout(()=>{ document.querySelector('.auth-card').style.animation = 'shake 0.4s ease' }, 10)
+    var lockSecs = deviceWrongCount * 3
+    btn.disabled = true; btn.textContent = 'Trust this device'
+    document.getElementById('device-pw-input').disabled = true
+    attemptsEl.textContent = 'Incorrect — locked for ' + lockSecs + 's'
+    var remaining = lockSecs
+    var countdown = setInterval(function() {
+      remaining--
+      if (remaining > 0) { attemptsEl.textContent = 'Incorrect — locked for ' + remaining + 's' }
+      else {
+        clearInterval(countdown)
+        attemptsEl.textContent = res?.error || 'Incorrect password'
+        btn.disabled = false
+        document.getElementById('device-pw-input').disabled = false
+        document.getElementById('device-pw-input').focus()
+      }
+    }, 1000)
   }
 }
 
@@ -1063,7 +1078,7 @@ async function checkToken(word) {
     wrongCount++
     document.querySelector('.auth-card').style.animation='none'
     setTimeout(()=>{ document.querySelector('.auth-card').style.animation='shake 0.4s ease' }, 10)
-    var lockSecs = wrongCount <= 1 ? 0 : (wrongCount - 1) * 3
+    var lockSecs = wrongCount * 3
     var attemptsEl = document.getElementById('auth-attempts')
     var refreshBtn = document.querySelector('#token-screen button[onclick="buildTokenGrid()"]')
     if (lockSecs > 0) {
@@ -1297,6 +1312,7 @@ function taskCardHTML(task,type){
     '</div>'+
     '<div class="task-actions">'+
     (task.completed?'<button class="task-action-btn" onclick="event.stopPropagation();uncompleteTask(\''+task.id+'\')" title="Undo">↩</button>':'<button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button>')+
+    (type!=='today'?'<button class="task-action-btn" onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" title="Move to today">⬆</button>':'')+
     '<button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button>'+
     '</div></div>'
 }
@@ -1308,6 +1324,10 @@ async function completeTask(id)   { const r=await POST(`/tasks/${id}/complete`);
 async function uncompleteTask(id) { const r=await POST(`/tasks/${id}/uncomplete`); if(r?.success){toast('Unmarked');loadData(true)}else toast('Error: '+r?.error) }
 async function deleteTask(id)      { const r=await DELETE(`/tasks/${id}`);              if(r?.success){toast('Moved to trash');loadData(true)}else toast('Error: '+r?.error) }
 async function deleteRecurring(id) { const r=await DELETE(`/tasks/recurring/${id}`);  if(r?.success){toast('Recurring deleted');loadData(true)}else toast('Error: '+r?.error) }
+async function moveToToday(id) {
+  var d=today(); var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
+  const r=await PATCH(`/tasks/${id}`,{due_date:ds}); if(r?.success){toast('Moved to today');loadData(true)}else toast('Error: '+r?.error)
+}
 
 async function modalDeleteTask() {
   if(!state.editingTask) return
