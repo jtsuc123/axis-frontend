@@ -1284,7 +1284,7 @@ function renderCalendarHeader() {
       if(task.tag){var utc=tagColor(task.tag);uTagPill='<span class="task-tag" style="background:'+utc.bg+';color:'+utc.color+';">'+esc(task.tag)+'</span>'}
       html+='<div id="task-card-'+task.id+'" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cream3);cursor:pointer;" onclick="openEditTask(\''+task.id+'\')">'+AXIS_STAR_SVG
       html+='<div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;"><span style="font-size:13px;color:var(--brown);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'+uTagPill+'</div>'
-      html+='<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button></div></div>'
+      html+='<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" title="Move to today">⬆</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button></div></div>'
     })
     html+='</div></div>'
   }
@@ -1610,6 +1610,7 @@ function renderAgenda() {
           html+=calTag+noteGlyph
           html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'
           html+=(!task.isRecurring&&!task.isTracker?'<button onclick="event.stopPropagation();'+(task.completed?'uncompleteTask':'completeTask')+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:'+(task.completed?'var(--green)':'var(--brown4)')+';font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="'+(task.completed?'Undo done':'Done')+'">✓</button>':'')
+          html+=(!task.isRecurring&&!task.isTracker?'<button onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Move to today">⬆</button>':'')
           html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Delete">🗑</button>'
           html+='</div>'
         })
