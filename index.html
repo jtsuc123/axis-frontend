@@ -729,7 +729,7 @@ async function initNotifications() {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(keyRes.key)
     })
-    await POST('/notifications/subscribe', { subscription: sub.toJSON() })
+    await POST('/notifications/subscribe', { subscription: sub.toJSON(), utcOffset: new Date().getTimezoneOffset() })
   } catch(e) { console.warn('Push setup failed', e) }
 }
 
@@ -907,7 +907,7 @@ function renderTokenGrid(tokens) {
     var btn=document.createElement('button'); btn.className='token-btn'; btn.textContent=word
     btn.onclick=function(){ checkToken(word) }; grid.appendChild(btn)
     var bw=btn.offsetWidth||80, bh=btn.offsetHeight||34, W=grid.offsetWidth||280
-    var x=Math.random()*(W-bw), y=Math.random()*(H-bh), sp=0.25+Math.random()*0.45, ang=Math.random()*Math.PI*2
+    var x=Math.random()*(W-bw), y=Math.random()*(H-bh), sp=0.6+Math.random()*0.5, ang=Math.random()*Math.PI*2
     btn.style.left=x+'px'; btn.style.top=y+'px'
     floaters.push({el:btn,x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,bw,bh})
   })
@@ -1284,7 +1284,7 @@ function renderCalendarHeader() {
       if(task.tag){var utc=tagColor(task.tag);uTagPill='<span class="task-tag" style="background:'+utc.bg+';color:'+utc.color+';">'+esc(task.tag)+'</span>'}
       html+='<div id="task-card-'+task.id+'" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cream3);cursor:pointer;" onclick="openEditTask(\''+task.id+'\')">'+AXIS_STAR_SVG
       html+='<div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;"><span style="font-size:13px;color:var(--brown);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'+uTagPill+'</div>'
-      html+='<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" title="Move to today">⬆</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button></div></div>'
+      html+='<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" title="Move to today" style="font-size:10px;font-weight:600;letter-spacing:0.02em;padding:3px 7px;background:var(--cream2);border:1px solid var(--cream3);border-radius:20px;">today</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button></div></div>'
     })
     html+='</div></div>'
   }
@@ -1312,7 +1312,7 @@ function taskCardHTML(task,type){
     '</div>'+
     '<div class="task-actions">'+
     (task.completed?'<button class="task-action-btn" onclick="event.stopPropagation();uncompleteTask(\''+task.id+'\')" title="Undo">↩</button>':'<button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button>')+
-    (type!=='today'?'<button class="task-action-btn" onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" title="Move to today">⬆</button>':'')+
+    (type!=='today'?'<button class="task-action-btn" onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" title="Move to today" style="font-size:10px;font-weight:600;letter-spacing:0.02em;padding:3px 7px;background:var(--cream2);border:1px solid var(--cream3);border-radius:20px;">today</button>':'')+
     '<button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button>'+
     '</div></div>'
 }
