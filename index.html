@@ -37,7 +37,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--brown)
 .token-grid{position:relative;width:100%;height:180px;margin-bottom:24px;overflow:hidden;border-radius:12px;}
 .token-btn{position:absolute;background:rgba(255,255,255,0.85);border:1px solid var(--cream3);border-radius:20px;padding:8px 16px;font-size:13px;color:var(--brown);cursor:none;font-family:'DM Serif Display',serif;letter-spacing:0.01em;white-space:nowrap;transition:background 0.12s,border-color 0.12s;user-select:none;}
 [data-theme="dark"] .token-btn{background:rgba(39,34,25,0.9);border-color:rgba(51,43,34,0.6);}
-.token-btn:hover{filter:blur(2px);opacity:0.6;}
+.token-btn:hover{filter:blur(6px);opacity:0.3;}
 .auth-card-blur{filter:blur(3px);transition:filter 0.1s;}
 .auth-footer{text-align:center;font-size:11px;color:var(--brown4);}
 .auth-footer a{color:var(--blue);cursor:pointer;text-decoration:none;}
@@ -1064,14 +1064,14 @@ async function submitNewMasterPassword() {
 
 async function checkToken(word) {
   var allBtns=document.querySelectorAll('.token-btn')
-  allBtns.forEach(b=>{b.disabled=true;b.style.opacity='0.6'})
+  allBtns.forEach(b=>{b.disabled=true;b.style.filter='blur(12px)';b.style.opacity='0.2'})
   const data = await POST('/auth/verify', {token:word})
   if (data?.valid) {
     _pendingJWT = data.jwt
     if (isDeviceRecognized()) {
       doUnlock()
     } else {
-      allBtns.forEach(b=>{b.disabled=false;b.style.opacity=''})
+      allBtns.forEach(b=>{b.disabled=false;b.style.filter='';b.style.opacity=''})
       showDeviceScreen()
     }
   } else {
@@ -1092,13 +1092,13 @@ async function checkToken(word) {
         if (remaining>0) { attemptsEl.textContent='Too many attempts — locked for '+remaining+'s' }
         else {
           clearInterval(countdown); attemptsEl.textContent=''
-          allBtns.forEach(b=>{ b.disabled=false; b.style.opacity='' })
+          allBtns.forEach(b=>{ b.disabled=false; b.style.filter=''; b.style.opacity='' })
           if (refreshBtn) { refreshBtn.disabled=false; refreshBtn.style.opacity='' }
           buildTokenGrid()
         }
       }, 1000)
     } else {
-      allBtns.forEach(b=>{ b.disabled=false; b.style.opacity='' })
+      allBtns.forEach(b=>{ b.disabled=false; b.style.filter=''; b.style.opacity='' })
       setTimeout(()=>buildTokenGrid(), 400)
     }
   }
@@ -2218,6 +2218,8 @@ function showNlpReview(p){
   fields+=nlpFieldRow('Due',p.dueDate||'—','dueDate')
   fields+=nlpFieldRow('Time',p.startTime?(p.startTime+(p.endTime?' – '+p.endTime:'')):'—','startTime')
   fields+=nlpFieldRow('Tag',p.tag||'None','tag')
+  var notifyLabel=p.notify_before!=null?p.notify_before+' min before':'None'
+  fields+=nlpFieldRow('Notify',notifyLabel,'notify_before')
   fields+=nlpFieldRow('Note',p.note||'—','note')
   document.getElementById('nlp-fields').innerHTML=fields
 }
@@ -2229,7 +2231,8 @@ async function nlpConfirm(){
   if(!nlpParsed) return
   var p=nlpParsed, btn=document.querySelector('#nlp-review-screen .btn-primary')
   btn.textContent='Saving...'; btn.disabled=true
-  var body={name:p.taskName,due_date:p.dueDate&&p.dueDate!=='—'?p.dueDate:null,due_time:p.startTime||null,tag:p.tag||null,note:p.note||null}
+  var notifyVal=p.notify_before!=null&&p.notify_before!=='None'?parseInt(p.notify_before):null
+  var body={name:p.taskName,due_date:p.dueDate&&p.dueDate!=='—'?p.dueDate:null,due_time:p.startTime||null,tag:p.tag||null,note:p.note||null,notify_before:isNaN(notifyVal)?null:notifyVal}
   const res=await POST('/tasks',body)
   btn.textContent='Confirm & save'; btn.disabled=false
   document.getElementById('nlp-modal').classList.remove('open')
