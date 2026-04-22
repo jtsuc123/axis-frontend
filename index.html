@@ -30,16 +30,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--brown)
 @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
 .auth-badge{display:inline-flex;align-items:center;gap:7px;background:var(--brown);border-radius:20px;padding:5px 14px;margin-bottom:18px;}
 .auth-badge-dot{width:6px;height:6px;border-radius:50%;background:var(--cream3);}
-.auth-badge-text{font-size:10px;color:var(--cream);letter-spacing:0.08em;font-weight:500;}
-.auth-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--brown);margin-bottom:4px;}
-.auth-subtitle{font-size:12px;color:var(--brown3);margin-bottom:8px;}
-.auth-label{font-size:10px;color:var(--brown4);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:12px;font-weight:500;}
+.auth-badge-text{font-size:10px;color:var(--cream);letter-spacing:0.08em;font-weight:500;filter:blur(0.5px);}
+.auth-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--brown);margin-bottom:4px;filter:blur(0.6px);}
+.auth-subtitle{font-size:12px;color:var(--brown3);margin-bottom:8px;filter:blur(0.5px);}
+.auth-label{font-size:10px;color:var(--brown4);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:12px;font-weight:500;filter:blur(0.5px);}
 .token-grid{position:relative;width:100%;height:180px;margin-bottom:24px;overflow:hidden;border-radius:12px;}
 .token-btn{position:absolute;background:rgba(255,255,255,0.85);border:1px solid var(--cream3);border-radius:20px;padding:8px 16px;font-size:13px;color:var(--brown);cursor:none;font-family:'DM Serif Display',serif;letter-spacing:0.01em;white-space:nowrap;transition:background 0.12s,border-color 0.12s;user-select:none;}
 [data-theme="dark"] .token-btn{background:rgba(39,34,25,0.9);border-color:rgba(51,43,34,0.6);}
 .token-btn:hover{filter:blur(6px);opacity:0.3;}
 .auth-card-blur{filter:blur(3px);transition:filter 0.1s;}
-.auth-footer{text-align:center;font-size:11px;color:var(--brown4);}
+.auth-footer{text-align:center;font-size:11px;color:var(--brown4);filter:blur(0.5px);}
 .auth-footer a{color:var(--blue);cursor:pointer;text-decoration:none;}
 .auth-footer a:hover{text-decoration:underline;}
 .auth-attempts{font-size:11px;color:var(--red);text-align:center;margin-bottom:12px;min-height:16px;}
@@ -134,7 +134,7 @@ nav{flex:1;}
 .btn-secondary:hover{background:var(--cream3);}
 .btn-danger{background:var(--red-bg);color:var(--red);}
 .btn-danger:hover{background:#f5c4b3;}
-#loading{position:fixed;inset:0;background:#1e1a16;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:36px;z-index:999;}
+#loading{position:fixed;inset:0;background:#1e1a16;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(16px,5vmin,56px);z-index:999;padding:20px;box-sizing:border-box;}
 .load-ring{position:absolute;border-radius:50%}
 .load-dot{position:absolute;border-radius:50%;background:#BA7517}
 @keyframes loadCW{to{transform:rotate(360deg)}}
@@ -143,11 +143,12 @@ nav{flex:1;}
 @keyframes loadPulse{0%,100%{opacity:0.5;transform:scale(0.92)}50%{opacity:1;transform:scale(1.1)}}
 @keyframes loadFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes loadDrift{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-@media(min-width:769px){
-  #loading-text .load-title{font-size:52px!important;}
-  #loading-text .load-sub{font-size:13px!important;letter-spacing:0.2em!important;}
-  #loading{gap:56px;background:radial-gradient(ellipse at 50% 40%,rgba(186,117,23,0.07) 0%,#1e1a16 65%);}
-}
+#loading-orbital{transform-origin:center center;}
+#loading-text .load-title{font-size:clamp(28px,8vmin,52px)!important;}
+#loading-text .load-sub{font-size:clamp(10px,2vmin,13px)!important;letter-spacing:clamp(0.1em,0.5vmin,0.2em)!important;}
+@media(max-height:600px),(max-width:380px){#loading-orbital{transform:scale(0.65);}#loading{gap:8px;}}
+@media(min-height:601px) and (max-height:750px),(min-width:381px) and (max-width:480px){#loading-orbital{transform:scale(0.8);}}
+@media(min-width:769px){#loading{background:radial-gradient(ellipse at 50% 40%,rgba(186,117,23,0.07) 0%,#1e1a16 65%);}#loading-orbital{transform:scale(1.1);}}
 #mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--cream2);border-top:1px solid var(--cream3);padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:50;}
 .mobile-nav-tabs{display:flex;overflow-x:auto;padding:0 12px;gap:4px;scrollbar-width:none;}
 .mobile-nav-tabs::-webkit-scrollbar{display:none;}
@@ -637,31 +638,10 @@ nav{flex:1;}
         </div>
       </div>
       <div class="form-group"><label class="form-label">Note (optional)</label><textarea class="form-textarea" id="f-note" placeholder="Additional details..."></textarea></div>
-      <div id="f-recurring-toggle-row" class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:2px;">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--brown2);">
-          <input type="checkbox" id="f-recurring" onchange="toggleRecurringFields()" style="accent-color:var(--brown);width:15px;height:15px;">
-          Recurring
-        </label>
-      </div>
-      <div id="f-recurring-fields" style="display:none;">
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Frequency</label><select class="form-select" id="f-freq"><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option><option value="daily">Daily</option></select></div>
-          <div class="form-group"><label class="form-label">Day</label><select class="form-select" id="f-day"><option value="MON">Mon</option><option value="TUE">Tue</option><option value="WED">Wed</option><option value="THU">Thu</option><option value="FRI">Fri</option><option value="SAT">Sat</option><option value="SUN">Sun</option></select></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Start time</label><input type="time" class="form-input" id="f-start-time"></div>
-          <div class="form-group"><label class="form-label">End time (optional)</label><input type="time" class="form-input" id="f-end-time"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Start date</label><input type="date" class="form-input" id="f-start-date"></div>
-          <div class="form-group"><label class="form-label">End date</label><input type="date" class="form-input" id="f-end-date"></div>
-        </div>
-      </div>
       <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
         <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
         <button class="btn btn-danger" id="modal-delete" style="display:none;margin-right:auto;" onclick="modalDeleteTask()">Delete</button>
         <button class="btn btn-secondary" id="modal-duplicate" style="display:none;" onclick="modalDuplicateTask()" title="Create a copy of this task">⧉ Duplicate</button>
-        <button class="btn btn-secondary" id="modal-make-recurring" style="display:none;" onclick="modalMakeRecurring()" title="Create a recurring version of this task">↺ Recurring</button>
         <button class="btn btn-primary" id="modal-save">Save</button>
       </div>
     </div>
@@ -810,7 +790,7 @@ var DECOY_POOL = ["phantom","archive","solstice","drift","ember","vault","lunar"
 var INACTIVITY_MS = 30 * 60 * 1000
 var inactivityTimer = null
 var _initialLoad = true   // suppresses auth overlay during first data fetch
-var state = { data:null, view:'calendar', calOffset:0, editingTask:null, recurringOn:false, theme:localStorage.getItem('axis-theme')||'light', unlocked:false, pendingHighlight:null }
+var state = { data:null, view:'calendar', calOffset:0, editingTask:null, theme:localStorage.getItem('axis-theme')||'light', unlocked:false, pendingHighlight:null }
 var DAYS        = ['SUN','MON','TUE','WED','THU','FRI','SAT']
 var DAYS_FULL   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
 var MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -1164,17 +1144,14 @@ async function loadData(silent) {
     } else { document.getElementById('loading').style.display='flex' }
   }
   try {
-    const [tasksRes, recurringRes, trackerRes] = await Promise.all([GET('/tasks'), GET('/tasks/recurring'), GET('/tracker')])
+    const [tasksRes, trackerRes] = await Promise.all([GET('/tasks'), GET('/tracker')])
     if (!tasksRes) { document.getElementById('offline-banner').style.display='none'; document.getElementById('loading').style.display='none'; return }
     state.data = {
-      todo:      tasksRes.tasks        || [],
-      recurring: recurringRes?.recurring || [],
-      tracker:   trackerRes?.events     || [],
-      trash:     [],
-      tagKey:    {}
+      todo:    tasksRes.tasks    || [],
+      tracker: trackerRes?.events || [],
+      trash:   [],
+      tagKey:  {}
     }
-    // Don't overwrite tag names with task names
-;(state.data.recurring||[]).forEach(r => { if(r.tag && !TAG_NAMES[r.tag]) state.data.tagKey[r.tag]=r.tag })
     saveCache(state.data)
     document.getElementById('offline-banner').style.display='none'
     var now=new Date(); document.getElementById('last-updated').textContent='Updated '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')
@@ -1323,7 +1300,6 @@ function taskCardHTML(task,type){
 async function completeTask(id)   { const r=await POST(`/tasks/${id}/complete`);   if(r?.success){toast('Marked done');loadData(true)}else toast('Error: '+r?.error) }
 async function uncompleteTask(id) { const r=await POST(`/tasks/${id}/uncomplete`); if(r?.success){toast('Unmarked');loadData(true)}else toast('Error: '+r?.error) }
 async function deleteTask(id)      { const r=await DELETE(`/tasks/${id}`);              if(r?.success){toast('Moved to trash');loadData(true)}else toast('Error: '+r?.error) }
-async function deleteRecurring(id) { const r=await DELETE(`/tasks/recurring/${id}`);  if(r?.success){toast('Recurring deleted');loadData(true)}else toast('Error: '+r?.error) }
 async function moveToToday(id) {
   var d=today(); var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
   const r=await PATCH(`/tasks/${id}`,{due_date:ds}); if(r?.success){toast('Moved to today');loadData(true)}else toast('Error: '+r?.error)
@@ -1348,63 +1324,20 @@ async function modalDuplicateTask() {
   } else toast('Error: '+res?.error)
 }
 
-function modalMakeRecurring() {
-  if(!state.editingTask) return
-  var t=state.editingTask
-  document.getElementById('task-modal').classList.remove('open')
-  // Re-open as Add modal but pre-filled with this task's name/tag and recurring toggled on
-  state.editingTask=null
-  document.getElementById('modal-delete').style.display='none'
-  document.getElementById('modal-duplicate').style.display='none'
-  document.getElementById('modal-make-recurring').style.display='none'
-  document.getElementById('modal-title').textContent='Add recurring'
-  document.getElementById('f-name').value=t.name||''
-  document.getElementById('f-note').value=''
-  document.getElementById('f-time').value=''
-  document.getElementById('f-tag').value=t.tag||''
-  document.getElementById('f-notify').value='10'
-  document.getElementById('f-notify-custom').style.display='none'
-  document.getElementById('f-recurring').checked=true
-  document.getElementById('f-recurring-fields').style.display='block'
-  document.getElementById('f-date-row').style.display='none'
-  document.getElementById('f-recurring-toggle-row').style.display='flex'
-  var td=new Date()
-  var ds=td.getFullYear()+'-'+String(td.getMonth()+1).padStart(2,'0')+'-'+String(td.getDate()).padStart(2,'0')
-  document.getElementById('f-start-date').value=ds
-  document.getElementById('f-start-time').value=t.time||''
-  document.getElementById('f-end-time').value=''
-  var te=new Date(td); te.setMonth(te.getMonth()+6)
-  document.getElementById('f-end-date').value=te.getFullYear()+'-'+String(te.getMonth()+1).padStart(2,'0')+'-'+String(te.getDate()).padStart(2,'0')
-  document.getElementById('task-modal').classList.add('open')
-  setTimeout(()=>document.getElementById('f-name').focus(),100)
-}
-
-function toggleRecurringFields(){
-  var on=document.getElementById('f-recurring').checked
-  document.getElementById('f-recurring-fields').style.display=on?'block':'none'
-  document.getElementById('f-date-row').style.display=on?'none':'flex'
-}
 
 function openAddModal() {
   state.editingTask=null
   document.getElementById('modal-delete').style.display='none'
   document.getElementById('modal-duplicate').style.display='none'
-  document.getElementById('modal-make-recurring').style.display='none'
   document.getElementById('modal-title').textContent='Add task'
-  ;['f-name','f-note','f-time','f-start-time','f-end-time'].forEach(id=>document.getElementById(id).value='')
+  ;['f-name','f-note','f-time'].forEach(id=>document.getElementById(id).value='')
   document.getElementById('f-notify').value='10'
   document.getElementById('f-notify-custom').style.display='none'
   document.getElementById('f-tag').value=''
-  document.getElementById('f-recurring').checked=false
-  document.getElementById('f-recurring-fields').style.display='none'
   document.getElementById('f-date-row').style.display='flex'
-  document.getElementById('f-recurring-toggle-row').style.display='flex'
   var td=new Date()
   var ds=td.getFullYear()+'-'+String(td.getMonth()+1).padStart(2,'0')+'-'+String(td.getDate()).padStart(2,'0')
   document.getElementById('f-date').value=ds
-  document.getElementById('f-start-date').value=ds
-  var te=new Date(td); te.setMonth(te.getMonth()+6)
-  document.getElementById('f-end-date').value=te.getFullYear()+'-'+String(te.getMonth()+1).padStart(2,'0')+'-'+String(te.getDate()).padStart(2,'0')
   document.getElementById('task-modal').classList.add('open')
   setTimeout(()=>document.getElementById('f-name').focus(),100)
 }
@@ -1414,7 +1347,6 @@ function openEditTask(id) {
   state.editingTask=task
   document.getElementById('modal-delete').style.display='inline-flex'
   document.getElementById('modal-duplicate').style.display='inline-flex'
-  document.getElementById('modal-make-recurring').style.display='inline-flex'
   document.getElementById('modal-title').textContent='Edit task'
   document.getElementById('f-name').value=task.name||''
   document.getElementById('f-note').value=task.note||''
@@ -1426,10 +1358,7 @@ function openEditTask(id) {
   var knownVals=['','5','10','30','60','720','1440']
   if(knownVals.includes(notifyStored)){document.getElementById('f-notify').value=notifyStored;document.getElementById('f-notify-custom').style.display='none'}
   else{document.getElementById('f-notify').value='custom';document.getElementById('f-notify-custom').value=notifyStored;document.getElementById('f-notify-custom').style.display='block'}
-  document.getElementById('f-recurring').checked=false
-  document.getElementById('f-recurring-fields').style.display='none'
   document.getElementById('f-date-row').style.display='flex'
-  document.getElementById('f-recurring-toggle-row').style.display='none'
   document.getElementById('task-modal').classList.add('open')
 }
 
@@ -1442,33 +1371,14 @@ document.getElementById('f-notify').addEventListener('change',function(){
 document.getElementById('modal-save').addEventListener('click', async function() {
   var name=document.getElementById('f-name').value.trim()
   if(!name){toast('Task name required');return}
-  var isRecurring=!state.editingTask&&document.getElementById('f-recurring').checked
+  var notifyVal=document.getElementById('f-notify').value
+  var notifyMins=notifyVal==='custom'?parseInt(document.getElementById('f-notify-custom').value)||10:notifyVal?parseInt(notifyVal):null
+  var body={name, due_date:document.getElementById('f-date').value||null, due_time:document.getElementById('f-time').value||null, tag:document.getElementById('f-tag').value||null, note:document.getElementById('f-note').value.trim()||null, notify_before:notifyMins}
   var res
-  if(isRecurring){
-    var startTime=document.getElementById('f-start-time').value||null
-    if(!startTime){toast('Start time required for recurring');return}
-    res=await POST('/tasks/recurring',{
-      tag:document.getElementById('f-tag').value||null,
-      value:document.getElementById('f-tag').value||null,
-      task_name:name,
-      frequency:document.getElementById('f-freq').value||'weekly',
-      day:document.getElementById('f-day').value||null,
-      start_time:startTime,
-      end_time:document.getElementById('f-end-time').value||null,
-      start_date:document.getElementById('f-start-date').value||null,
-      end_date:document.getElementById('f-end-date').value||null
-    })
-    document.getElementById('task-modal').classList.remove('open')
-    if(res?.success){toast('Recurring event added');loadData(true)}else toast('Error: '+res?.error)
-  } else {
-    var notifyVal=document.getElementById('f-notify').value
-    var notifyMins=notifyVal==='custom'?parseInt(document.getElementById('f-notify-custom').value)||10:notifyVal?parseInt(notifyVal):null
-    var body={name, due_date:document.getElementById('f-date').value||null, due_time:document.getElementById('f-time').value||null, tag:document.getElementById('f-tag').value||null, note:document.getElementById('f-note').value.trim()||null, notify_before:notifyMins}
-    if(state.editingTask) res=await PATCH(`/tasks/${state.editingTask.id}`,body)
-    else res=await POST('/tasks',body)
-    document.getElementById('task-modal').classList.remove('open')
-    if(res?.success){toast(state.editingTask?'Saved':'Task added');loadData(true)}else toast('Error: '+res?.error)
-  }
+  if(state.editingTask) res=await PATCH(`/tasks/${state.editingTask.id}`,body)
+  else res=await POST('/tasks',body)
+  document.getElementById('task-modal').classList.remove('open')
+  if(res?.success){toast(state.editingTask?'Saved':'Task added');loadData(true)}else toast('Error: '+res?.error)
 })
 
 function populateTagSelect() {
@@ -1506,25 +1416,6 @@ function renderAgenda() {
     var endTime   = ev.end_minutes != null ? String(Math.floor(ev.end_minutes/60)).padStart(2,'0')+':'+String(ev.end_minutes%60).padStart(2,'0') : null
     tasksByDate[key].push({id:ev.id,name:ev.value,time:startTime,end_time:endTime,note:ev.note,tag:null,isTracker:true})
   })
-  var DAY_MAP={SUN:0,MON:1,TUE:2,WED:3,THU:4,FRI:5,SAT:6}
-  var rangeEnd=todayTs+(42+state.calOffset*44+44)*86400000
-  var rangeStart=todayTs+(-2+state.calOffset*44)*86400000
-  ;(state.data.recurring || []).forEach(function(r) {
-    if (!r.day || !r.start_time) return
-    var targetDow=DAY_MAP[r.day]
-    if (targetDow==null) return
-    var rStart=r.start_date?parseInt(r.start_date):todayTs
-    var rEnd=r.end_date?parseInt(r.end_date):rangeEnd
-    var cursor=new Date(Math.max(rangeStart,rStart)); cursor.setHours(0,0,0,0)
-    while(cursor.getTime()<=Math.min(rangeEnd,rEnd)){
-      if(cursor.getDay()===targetDow){
-        var key=cursor.getTime()
-        if(!tasksByDate[key]) tasksByDate[key]=[]
-        tasksByDate[key].push({id:r.id,name:r.task_name||r.value||r.tag,time:r.start_time,end_time:r.end_time,note:null,tag:r.tag,isRecurring:true})
-      }
-      cursor.setDate(cursor.getDate()+1)
-    }
-  })
   var days=[]
   for(var i=-2+(state.calOffset*44);i<=42+(state.calOffset*44);i++){
     var d2=new Date(todayTs); d2.setDate(d2.getDate()+i); d2.setHours(0,0,0,0); days.push(d2.getTime())
@@ -1533,6 +1424,8 @@ function renderAgenda() {
   days.forEach(function(dayTs){
     var isToday=dayTs===todayTs, isPast=dayTs<todayTs, d3=new Date(dayTs)
     var todos=(tasksByDate[dayTs]||[]).sort(function(a,b){
+      if(a.completed && !b.completed) return 1
+      if(!a.completed && b.completed) return -1
       var aT=a.time||a.due_time, bT=b.time||b.due_time
       if(aT&&bT) return aT.localeCompare(bT)
       if(aT) return -1; if(bT) return 1; return 0
@@ -1577,16 +1470,15 @@ function renderAgenda() {
           var doneCls=task.completed?'text-decoration:line-through;opacity:0.4;':''
           var taskTime=task.time||task.due_time
           var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
-          var delFn=task.isRecurring?'deleteRecurring':'deleteTask'
-          var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':task.isRecurring?'':('openEditTask(\''+task.id+'\')')
+          var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':('openEditTask(\''+task.id+'\')')
           var calTagToday=task.tag?'<span style="font-size:9px;font-weight:600;color:#BA7517;flex-shrink:0;letter-spacing:0.02em;">['+esc(task.tag)+']</span>':''
           var noteGlyphToday=task.note&&task.note.trim()?'<span style="font-size:9px;color:rgba(186,117,23,0.5);flex-shrink:0;font-weight:600;" title="Has note">≡</span>':''
           html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span style="font-size:10px;min-width:68px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+timeLabel+'</span>'
           html+=calTagToday+noteGlyphToday
           html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'flex:1;min-width:0;word-break:break-word;">'+esc(task.name)+'</span>'
-          html+=(!task.isRecurring&&!task.isTracker?'<button onclick="event.stopPropagation();'+(task.completed?'uncompleteTask':'completeTask')+'(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:'+(task.completed?'rgba(15,110,86,0.9)':'rgba(250,247,242,0.6)')+';font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="'+(task.completed?'Undo done':'Done')+'">✓</button>':'')
-          html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.6);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="Delete">🗑</button>'
+          html+=(!task.isTracker?'<button onclick="event.stopPropagation();'+(task.completed?'uncompleteTask':'completeTask')+'(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:'+(task.completed?'rgba(15,110,86,0.9)':'rgba(250,247,242,0.6)')+';font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="'+(task.completed?'Undo done':'Done')+'">✓</button>':'')
+          html+=(!task.isTracker?'<button onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.6);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="Delete">🗑</button>':'')
           html+='</div>'
         })
       }
@@ -1601,17 +1493,16 @@ function renderAgenda() {
           var doneCls=task.completed?'text-decoration:line-through;color:var(--brown4);':''
           var taskTime=task.time||task.due_time
           var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
-          var delFn=task.isRecurring?'deleteRecurring':'deleteTask'
-          var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':task.isRecurring?'':('openEditTask(\''+task.id+'\')')
+          var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':('openEditTask(\''+task.id+'\')')
           var calTag=task.tag?(function(){var ctc2=tagColor(task.tag);return '<span style="font-size:9px;font-weight:600;color:'+ctc2.color+';flex-shrink:0;letter-spacing:0.02em;">['+esc(task.tag)+']</span>'})():''
           var noteGlyph=task.note&&task.note.trim()?'<span style="font-size:9px;color:var(--brown4);flex-shrink:0;font-weight:600;opacity:0.6;" title="Has note">≡</span>':''
           html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span class="agenda-time" style="color:var(--brown4);min-width:80px;white-space:nowrap;">'+timeLabel+'</span>'
           html+=calTag+noteGlyph
           html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'
-          html+=(!task.isRecurring&&!task.isTracker?'<button onclick="event.stopPropagation();'+(task.completed?'uncompleteTask':'completeTask')+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:'+(task.completed?'var(--green)':'var(--brown4)')+';font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="'+(task.completed?'Undo done':'Done')+'">✓</button>':'')
-          html+=(!task.isRecurring&&!task.isTracker?'<button onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Move to today">⬆</button>':'')
-          html+='<button onclick="event.stopPropagation();'+delFn+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Delete">🗑</button>'
+          html+=(!task.isTracker?'<button onclick="event.stopPropagation();'+(task.completed?'uncompleteTask':'completeTask')+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:'+(task.completed?'var(--green)':'var(--brown4)')+';font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="'+(task.completed?'Undo done':'Done')+'">✓</button>':'')
+          html+=(!task.isTracker?'<button onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Move to today">⬆</button>':'')
+          html+=(!task.isTracker?'<button onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Delete">🗑</button>':'')
           html+='</div>'
         })
       }
@@ -2101,7 +1992,7 @@ async function orbitSend(){
   var thinking=orbitAddThinking()
   var tz=Intl.DateTimeFormat().resolvedOptions().timeZone
   var tzCurrency={'Asia/Taipei':'TWD','Asia/Tokyo':'JPY','America/New_York':'USD','America/Los_Angeles':'USD','America/Chicago':'USD','Europe/London':'GBP','Europe/Paris':'EUR','Europe/Berlin':'EUR','Australia/Sydney':'AUD','Asia/Singapore':'SGD','Asia/Hong_Kong':'HKD','Asia/Seoul':'KRW'}
-  var context={todo:state.data?.todo||[],recurring:state.data?.recurring||[],tagKey:state.data?.tagKey||{},timezone:tz,localCurrency:tzCurrency[tz]||'TWD'}
+  var context={todo:state.data?.todo||[],tagKey:state.data?.tagKey||{},timezone:tz,localCurrency:tzCurrency[tz]||'TWD'}
   const r=await POST('/orbit/chat',{message:msg,context})
   input.disabled=false; thinking.remove()
   if(!r) return
@@ -2152,21 +2043,6 @@ async function handleOrbitAction(action,data){
       res=await POST('/finance/outstanding',data)
       if(res?.success){toast(res.message||'Outstanding added');loadFinanceData()}
       break
-    case 'addRecurring':
-  res = await POST('/tasks/recurring', {
-    tag:        data.tag        || null,
-    value:      data.tag        || null,
-    task_name:  data.task_name  || data.name || null,
-    frequency:  data.frequency  || 'weekly',
-    day:        data.day        || null,
-    start_time: data.start_time || null,
-    end_time:   data.end_time   || null,
-    start_date: data.start_date || null,
-    end_date:   data.end_date   || null
-  })
-  if (res?.success) { toast('Recurring event added'); switchView('calendar'); loadData(true) }
-  else toast('Error: ' + res?.error)
-  break
     case 'settleOutstanding':
       var item=(finState.data?.outstanding||[]).find(i=>i.person.toLowerCase().includes((data.person||'').toLowerCase())&&!i.settled)
       if(item){res=await POST('/finance/outstanding/'+item.id+'/settle');if(res?.success){toast(res.message||'Settled');loadFinanceData()}}
