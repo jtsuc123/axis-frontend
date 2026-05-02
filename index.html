@@ -569,12 +569,29 @@ nav{flex:1;}
     <div class="modal" style="max-width:400px;">
       <h3>Edit Event</h3>
       <div class="form-group"><label class="form-label">Event name *</label><input type="text" class="form-input" id="tev-name" placeholder="e.g. Gym, Lecture, Meeting"></div>
-      <div class="form-group"><label class="form-label">Date *</label><input type="date" class="form-input" id="tev-date"></div>
       <div class="form-row">
+        <div class="form-group"><label class="form-label">Date *</label><input type="date" class="form-input" id="tev-date"></div>
         <div class="form-group"><label class="form-label">Start time</label><input type="time" class="form-input" id="tev-start"></div>
-        <div class="form-group"><label class="form-label">End time</label><input type="time" class="form-input" id="tev-end"></div>
       </div>
-      <div class="form-group"><label class="form-label">Note</label><textarea class="form-textarea" id="tev-note" placeholder="Optional note..." style="min-height:60px;"></textarea></div>
+      <div class="form-group"><label class="form-label">End time (optional)</label><input type="time" class="form-input" id="tev-end"></div>
+      <div class="form-group"><label class="form-label">Tag</label><select class="form-select" id="tev-tag"><option value="">No tag</option></select></div>
+      <div class="form-group">
+        <label class="form-label">Notify me before</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select class="form-select" id="tev-notify" style="flex:1;">
+            <option value="">No notification</option>
+            <option value="5">5 minutes</option>
+            <option value="10">10 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="720">12 hours</option>
+            <option value="1440">1 day</option>
+            <option value="custom">Custom...</option>
+          </select>
+          <input type="number" id="tev-notify-custom" placeholder="mins" min="1" class="form-input" style="width:90px;display:none;">
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Note</label><textarea class="form-textarea" id="tev-note" placeholder="Optional note..." style="min-height:120px;resize:vertical;"></textarea></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="document.getElementById('tracker-event-modal').classList.remove('open')">Cancel</button>
         <button class="btn btn-danger" id="tev-delete-btn" style="margin-right:auto;" onclick="deleteTrackerEvent()">Delete</button>
@@ -618,8 +635,9 @@ nav{flex:1;}
       <div class="form-group"><label class="form-label">Task name</label><input type="text" class="form-input" id="f-name" placeholder="What needs to be done?"></div>
       <div class="form-row" id="f-date-row">
         <div class="form-group"><label class="form-label">Due date</label><input type="date" class="form-input" id="f-date"></div>
-        <div class="form-group"><label class="form-label">Time (optional)</label><input type="time" class="form-input" id="f-time"></div>
+        <div class="form-group"><label class="form-label">Start time</label><input type="time" class="form-input" id="f-start"></div>
       </div>
+      <div class="form-group"><label class="form-label">End time (optional)</label><input type="time" class="form-input" id="f-end"></div>
       <div class="form-group"><label class="form-label">Tag</label><select class="form-select" id="f-tag"><option value="">No tag</option></select></div>
       <div class="form-group">
         <label class="form-label">Notify me before</label>
@@ -642,6 +660,7 @@ nav{flex:1;}
         <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
         <button class="btn btn-danger" id="modal-delete" style="display:none;margin-right:auto;" onclick="modalDeleteTask()">Delete</button>
         <button class="btn btn-secondary" id="modal-duplicate" style="display:none;" onclick="modalDuplicateTask()" title="Create a copy of this task">⧉ Duplicate</button>
+        <button class="btn btn-secondary" id="modal-done-btn" style="display:none;" onclick="modalToggleDone()">Mark done</button>
         <button class="btn btn-primary" id="modal-save">Save</button>
       </div>
     </div>
@@ -1268,6 +1287,21 @@ function renderCalendarHeader() {
   document.getElementById('undated-tasks-section').innerHTML=html
 }
 
+function priorityIcon(p){
+  if(p==='high')   return '<svg width="11" height="11" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#D94F4F"/></svg>'
+  if(p==='medium') return '<svg width="11" height="11" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#E8A928"/></svg>'
+  if(p==='low')    return '<svg width="11" height="11" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="#6B9EBD"/></svg>'
+  return '<svg width="11" height="11" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.25"/></svg>'
+}
+
+async function cyclePriority(id,current){
+  var order=['','low','medium','high']
+  var next=order[(order.indexOf(current||'')+1)%order.length]
+  const r=await PATCH(`/tasks/${id}`,{priority:next||null})
+  if(r?.success) loadData(true)
+  else toast('Error: '+r?.error)
+}
+
 function taskCardHTML(task,type){
   var colors={pastdue:['var(--red-bg)','var(--red)'],today:['var(--amber-bg)','var(--amber)'],tomorrow:['var(--cream2)','var(--brown3)'],future:['var(--cream2)','var(--brown3)']}
   var c=colors[type]||colors.future, hasNote=task.note&&task.note.trim(), doneCls=task.completed?' done':''
@@ -1277,8 +1311,10 @@ function taskCardHTML(task,type){
   else dateStr=new Date(typeof task.due_date==='number'?task.due_date:parseInt(task.due_date)).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric',weekday:'long'})
   var tagPill=''
   if(task.tag){var tc=tagColor(task.tag);tagPill='<span class="task-tag" style="background:'+tc.bg+';color:'+tc.color+';">'+esc(task.tag)+'</span>'}
+  var priorityLabel={low:'Low priority',medium:'Medium priority',high:'High priority'}[task.priority]||'Set priority'
   return '<div class="task-card" id="task-card-'+task.id+'" onclick="openEditTask(\''+task.id+'\')" style="position:relative;overflow:hidden;">'+
     (hasNote?'<div style="position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 10px 10px 0;border-color:transparent #BA7517 transparent transparent;border-radius:0 10px 0 0;opacity:0.7;" title="Has note"></div>':'')+
+    '<button style="flex-shrink:0;padding:2px 4px;background:none;border:none;cursor:pointer;line-height:1;border-radius:4px;" onclick="event.stopPropagation();cyclePriority(\''+task.id+'\',\''+esc(task.priority||'')+'\')" title="'+priorityLabel+'">'+priorityIcon(task.priority)+'</button>'+
     '<div class="task-icon" style="background:'+c[0]+';flex-shrink:0;"><div class="task-icon-inner" style="background:'+c[1]+'"></div></div>'+
     '<div class="task-info">'+
       '<div style="display:flex;align-items:center;gap:5px;">'+
@@ -1312,11 +1348,20 @@ async function modalDeleteTask() {
   state.editingTask=null
 }
 
+async function modalToggleDone(){
+  if(!state.editingTask) return
+  var t=state.editingTask
+  document.getElementById('task-modal').classList.remove('open')
+  state.editingTask=null
+  if(t.completed) await uncompleteTask(t.id)
+  else await completeTask(t.id)
+}
+
 async function modalDuplicateTask() {
   if(!state.editingTask) return
   var t=state.editingTask
   document.getElementById('task-modal').classList.remove('open')
-  var res=await POST('/tasks',{name:t.name+' (copy)',due_date:t.due_date||null,due_time:t.time||null,tag:t.tag||null,note:t.note||null,notify_before:t.notify_before||null})
+  var res=await POST('/tasks',{name:t.name+' (copy)',due_date:t.due_date||null,start_time:t.time||null,end_time:t.end_time||null,tag:t.tag||null,note:t.note||null,notify_before:t.notify_before||null})
   if(res?.success){
     toast('Duplicated')
     state.pendingHighlight='cal-task-'+res.task.id
@@ -1330,11 +1375,12 @@ function openAddModal() {
   document.getElementById('modal-delete').style.display='none'
   document.getElementById('modal-duplicate').style.display='none'
   document.getElementById('modal-title').textContent='Add task'
-  ;['f-name','f-note','f-time'].forEach(id=>document.getElementById(id).value='')
+  ;['f-name','f-note','f-start','f-end'].forEach(id=>document.getElementById(id).value='')
   document.getElementById('f-notify').value='10'
   document.getElementById('f-notify-custom').style.display='none'
   document.getElementById('f-tag').value=''
   document.getElementById('f-date-row').style.display='flex'
+  document.getElementById('modal-done-btn').style.display='none'
   var td=new Date()
   var ds=td.getFullYear()+'-'+String(td.getMonth()+1).padStart(2,'0')+'-'+String(td.getDate()).padStart(2,'0')
   document.getElementById('f-date').value=ds
@@ -1353,12 +1399,16 @@ function openEditTask(id) {
   document.getElementById('f-tag').value=task.tag||''
   var dd=task.due_date?(typeof task.due_date==='number'?new Date(task.due_date):new Date(parseInt(task.due_date))):null
   document.getElementById('f-date').value=dd?dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'):''
-  document.getElementById('f-time').value=task.time||''
+  document.getElementById('f-start').value=task.time||''
+  document.getElementById('f-end').value=task.end_time||''
   var notifyStored=task.notify_before!=null?String(task.notify_before):'10'
   var knownVals=['','5','10','30','60','720','1440']
   if(knownVals.includes(notifyStored)){document.getElementById('f-notify').value=notifyStored;document.getElementById('f-notify-custom').style.display='none'}
   else{document.getElementById('f-notify').value='custom';document.getElementById('f-notify-custom').value=notifyStored;document.getElementById('f-notify-custom').style.display='block'}
   document.getElementById('f-date-row').style.display='flex'
+  var doneBtn=document.getElementById('modal-done-btn')
+  doneBtn.style.display='inline-flex'
+  doneBtn.textContent=task.completed?'Undo done':'Mark done'
   document.getElementById('task-modal').classList.add('open')
 }
 
@@ -1367,13 +1417,16 @@ document.getElementById('task-modal').addEventListener('click',function(e){if(e.
 document.getElementById('f-notify').addEventListener('change',function(){
   document.getElementById('f-notify-custom').style.display = this.value==='custom' ? 'block' : 'none'
 })
+document.getElementById('tev-notify').addEventListener('change',function(){
+  document.getElementById('tev-notify-custom').style.display = this.value==='custom' ? 'block' : 'none'
+})
 
 document.getElementById('modal-save').addEventListener('click', async function() {
   var name=document.getElementById('f-name').value.trim()
   if(!name){toast('Task name required');return}
   var notifyVal=document.getElementById('f-notify').value
   var notifyMins=notifyVal==='custom'?parseInt(document.getElementById('f-notify-custom').value)||10:notifyVal?parseInt(notifyVal):null
-  var body={name, due_date:document.getElementById('f-date').value||null, due_time:document.getElementById('f-time').value||null, tag:document.getElementById('f-tag').value||null, note:document.getElementById('f-note').value.trim()||null, notify_before:notifyMins}
+  var body={name, due_date:document.getElementById('f-date').value||null, start_time:document.getElementById('f-start').value||null, end_time:document.getElementById('f-end').value||null, tag:document.getElementById('f-tag').value||null, note:document.getElementById('f-note').value.trim()||null, notify_before:notifyMins}
   var res
   if(state.editingTask) res=await PATCH(`/tasks/${state.editingTask.id}`,body)
   else res=await POST('/tasks',body)
@@ -1382,12 +1435,15 @@ document.getElementById('modal-save').addEventListener('click', async function()
 })
 
 function populateTagSelect() {
-  var sel=document.getElementById('f-tag'); sel.innerHTML='<option value="">No tag</option>'
   var tagKey=Object.assign({},TAG_NAMES,state.data?.tagKey||{})
-  Object.keys(TAG_COLORS).forEach(code=>{
-    var opt=document.createElement('option'); opt.value=code
-    opt.textContent=code+' — '+(tagKey[code]||code)
-    sel.appendChild(opt)
+  ;['f-tag','tev-tag'].forEach(function(selId){
+    var sel=document.getElementById(selId); if(!sel) return
+    sel.innerHTML='<option value="">No tag</option>'
+    Object.keys(TAG_COLORS).forEach(code=>{
+      var opt=document.createElement('option'); opt.value=code
+      opt.textContent=code+' — '+(tagKey[code]||code)
+      sel.appendChild(opt)
+    })
   })
 }
 
@@ -1414,7 +1470,7 @@ function renderAgenda() {
     if (!tasksByDate[key]) tasksByDate[key] = []
     var startTime = ev.minutes != null ? String(Math.floor(ev.minutes/60)).padStart(2,'0')+':'+String(ev.minutes%60).padStart(2,'0') : null
     var endTime   = ev.end_minutes != null ? String(Math.floor(ev.end_minutes/60)).padStart(2,'0')+':'+String(ev.end_minutes%60).padStart(2,'0') : null
-    tasksByDate[key].push({id:ev.id,name:ev.value,time:startTime,end_time:endTime,note:ev.note,tag:null,isTracker:true})
+    tasksByDate[key].push({id:ev.id,name:ev.value,time:startTime,end_time:endTime,note:ev.note,tag:ev.tag||null,isTracker:true})
   })
   var days=[]
   for(var i=-2+(state.calOffset*44);i<=42+(state.calOffset*44);i++){
@@ -1939,6 +1995,11 @@ function openTrackerEventModal(id){
   document.getElementById('tev-start').value=toTime(ev.minutes)
   document.getElementById('tev-end').value=toTime(ev.end_minutes)
   document.getElementById('tev-note').value=ev.note||''
+  document.getElementById('tev-tag').value=ev.tag||''
+  var tevNotify=ev.notify_before!=null?String(ev.notify_before):''
+  var knownVals=['','5','10','30','60','720','1440']
+  if(knownVals.includes(tevNotify)){document.getElementById('tev-notify').value=tevNotify;document.getElementById('tev-notify-custom').style.display='none'}
+  else{document.getElementById('tev-notify').value='custom';document.getElementById('tev-notify-custom').value=tevNotify;document.getElementById('tev-notify-custom').style.display='block'}
   document.getElementById('tracker-event-modal').classList.add('open')
   setTimeout(()=>document.getElementById('tev-name').focus(),100)
 }
@@ -1948,7 +2009,9 @@ async function saveTrackerEvent(){
   if(!name){toast('Name required');return}
   var dp=document.getElementById('tev-date').value.split('-')
   var dateTs=new Date(parseInt(dp[0]),parseInt(dp[1])-1,parseInt(dp[2]),12,0,0).getTime()
-  var body={name,date:dateTs,start_time:document.getElementById('tev-start').value||null,end_time:document.getElementById('tev-end').value||null,note:document.getElementById('tev-note').value.trim()||null}
+  var tevNotifyVal=document.getElementById('tev-notify').value
+  var tevNotifyMins=tevNotifyVal==='custom'?parseInt(document.getElementById('tev-notify-custom').value)||10:tevNotifyVal?parseInt(tevNotifyVal):null
+  var body={name,date:dateTs,start_time:document.getElementById('tev-start').value||null,end_time:document.getElementById('tev-end').value||null,note:document.getElementById('tev-note').value.trim()||null,tag:document.getElementById('tev-tag').value||null,notify_before:tevNotifyMins}
   var btn=document.querySelector('#tracker-event-modal .btn-primary'); btn.textContent='Saving...'; btn.disabled=true
   const res=await PATCH('/tracker/'+_editingTrackerEventId,body)
   btn.textContent='Save'; btn.disabled=false
