@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -1280,7 +1280,7 @@ function renderCalendarHeader() {
       if(task.tag){var utc=tagColor(task.tag);uTagPill='<span class="task-tag" style="background:'+utc.bg+';color:'+utc.color+';">'+esc(task.tag)+'</span>'}
       html+='<div id="task-card-'+task.id+'" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--cream3);cursor:pointer;" onclick="openEditTask(\''+task.id+'\')">'+AXIS_STAR_SVG
       html+='<div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0;"><span style="font-size:13px;color:var(--brown);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'+uTagPill+'</div>'
-      html+='<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" title="Move to today" style="font-size:10px;font-weight:600;letter-spacing:0.02em;padding:3px 7px;background:var(--cream2);border:1px solid var(--cream3);border-radius:20px;">today</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button></div></div>'
+      html+='<div style="display:flex;gap:4px;"><button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button><button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button></div></div>'
     })
     html+='</div></div>'
   }
@@ -1325,7 +1325,6 @@ function taskCardHTML(task,type){
     '</div>'+
     '<div class="task-actions">'+
     (task.completed?'<button class="task-action-btn" onclick="event.stopPropagation();uncompleteTask(\''+task.id+'\')" title="Undo">↩</button>':'<button class="task-action-btn" onclick="event.stopPropagation();completeTask(\''+task.id+'\')" title="Done">✓</button>')+
-    (type!=='today'?'<button class="task-action-btn" onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" title="Move to today" style="font-size:10px;font-weight:600;letter-spacing:0.02em;padding:3px 7px;background:var(--cream2);border:1px solid var(--cream3);border-radius:20px;">today</button>':'')+
     '<button class="task-action-btn" onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" title="Delete">🗑</button>'+
     '</div></div>'
 }
@@ -1454,14 +1453,29 @@ function renderAgenda() {
   renderCalendarHeader()
   if(!state.data){document.getElementById('agenda-grid').innerHTML='<div class="empty-state"><p>No data.</p></div>';return}
   var todayTs=today().getTime(), todoTasks=state.data.todo||[]
+  var MONTHS_SHORT=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
   var tasksByDate={}
+
+  // Collect overdue incomplete tasks to surface in today's card
+  var overdueForToday=[], overdueIds=new Set()
   todoTasks.forEach(function(task){
     if(!task.due_date) return
     var d=new Date(typeof task.due_date==='number'?task.due_date:parseInt(task.due_date)); d.setHours(0,0,0,0)
     var key=d.getTime()
     if(!tasksByDate[key]) tasksByDate[key]=[]
     tasksByDate[key].push(task)
+    if(!task.completed && key<todayTs){
+      var daysAgo=Math.round((todayTs-key)/86400000)
+      overdueForToday.push(Object.assign({},task,{
+        _overdueDate: MONTHS_SHORT[d.getMonth()]+' '+d.getDate(),
+        _daysAgo: daysAgo===1?'1 day ago':daysAgo+' days ago',
+        _origDayTs: key
+      }))
+      overdueIds.add(task.id)
+    }
   })
+  overdueForToday.sort(function(a,b){return a._origDayTs-b._origDayTs})
+
   ;(state.data.tracker || []).forEach(function(ev) {
     if (!ev.date) return
     var d = new Date(typeof ev.date === 'number' ? ev.date : parseInt(ev.date))
@@ -1472,26 +1486,54 @@ function renderAgenda() {
     var endTime   = ev.end_minutes != null ? String(Math.floor(ev.end_minutes/60)).padStart(2,'0')+':'+String(ev.end_minutes%60).padStart(2,'0') : null
     tasksByDate[key].push({id:ev.id,name:ev.value,time:startTime,end_time:endTime,note:ev.note,tag:ev.tag||null,isTracker:true})
   })
+
+  // Today's view starts at yesterday (-1); earlier view (calOffset<0) is rendered newest-first
+  var startOff = state.calOffset===0 ? -1 : 0
   var days=[]
-  for(var i=-2+(state.calOffset*44);i<=42+(state.calOffset*44);i++){
+  for(var i=startOff+(state.calOffset*44);i<=42+(state.calOffset*44);i++){
     var d2=new Date(todayTs); d2.setDate(d2.getDate()+i); d2.setHours(0,0,0,0); days.push(d2.getTime())
   }
+  if(state.calOffset<0) days.reverse()
+
   var html=''
   days.forEach(function(dayTs){
     var isToday=dayTs===todayTs, isPast=dayTs<todayTs, d3=new Date(dayTs)
-    var todos=(tasksByDate[dayTs]||[]).sort(function(a,b){
-      if(a.completed && !b.completed) return 1
-      if(!a.completed && b.completed) return -1
-      var aT=a.time||a.due_time, bT=b.time||b.due_time
-      if(aT&&bT) return aT.localeCompare(bT)
-      if(aT) return -1; if(bT) return 1; return 0
-    })
-    var isNearby=Math.abs(dayTs-todayTs)<=5*86400000
+
+    // Build the task list for this day
+    var rawItems=tasksByDate[dayTs]||[]
+    var todos
+    if(isToday){
+      var todayItems=rawItems.filter(function(t){return !overdueIds.has(t.id)}).sort(function(a,b){
+        if(a.completed && !b.completed) return 1; if(!a.completed && b.completed) return -1
+        var aT=a.time||a.due_time, bT=b.time||b.due_time
+        if(aT&&bT) return aT.localeCompare(bT); if(aT) return -1; if(bT) return 1; return 0
+      })
+      todos=overdueForToday.concat(todayItems)
+    } else if(isPast){
+      todos=rawItems.filter(function(t){return t.isTracker||t.completed}).sort(function(a,b){
+        if(a.completed && !b.completed) return 1; if(!a.completed && b.completed) return -1
+        var aT=a.time||a.due_time, bT=b.time||b.due_time
+        if(aT&&bT) return aT.localeCompare(bT); if(aT) return -1; if(bT) return 1; return 0
+      })
+    } else {
+      todos=rawItems.slice().sort(function(a,b){
+        if(a.completed && !b.completed) return 1; if(!a.completed && b.completed) return -1
+        var aT=a.time||a.due_time, bT=b.time||b.due_time
+        if(aT&&bT) return aT.localeCompare(bT); if(aT) return -1; if(bT) return 1; return 0
+      })
+    }
+
+    // Show nearby empty days: today's view = yesterday + today + 5 future; earlier = within 5 days
+    var isNearby
+    if(state.calOffset===0){
+      isNearby=isToday||dayTs===todayTs-86400000||(dayTs>todayTs&&dayTs<=todayTs+5*86400000)
+    } else {
+      isNearby=Math.abs(dayTs-todayTs)<=5*86400000
+    }
     if(!todos.length&&!isNearby) return
 
     if(isToday){
       html+='<div class="agenda-today-card">'
-      // Current event / free indicator — computed before header so we can inline it
       var nowH2=new Date().getHours(), nowM2=new Date().getMinutes(), nowMins2=nowH2*60+nowM2
       var currentEv=todos.find(function(tk){
         var tt=tk.time||tk.due_time; if(!tt||tk.completed) return false
@@ -1499,26 +1541,27 @@ function renderAgenda() {
         if(tk.end_time){var ep=tk.end_time.split(':'),eMin=parseInt(ep[0])*60+parseInt(ep[1]);return nowMins2>=tMin&&nowMins2<eMin}
         return nowMins2>=tMin&&nowMins2<tMin+60
       })
-      // Header row — date + status badge inline
-      html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">'
+      // Date header row
+      html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
       html+='<div style="width:7px;height:7px;border-radius:50%;background:#BA7517;flex-shrink:0;"></div>'
       html+='<div class="agenda-day-title" style="color:#faf7f2;">TODAY — '+DAYS[d3.getDay()]+' '+MONTHS[d3.getMonth()].toUpperCase()+' '+d3.getDate()+'</div>'
+      html+='</div>'
+      // Current event / free indicator — full-width row below the date header
       if(currentEv){
-        html+='<div style="display:flex;align-items:center;gap:5px;padding:2px 7px 2px 5px;border-radius:20px;background:rgba(186,117,23,0.18);border:1px solid rgba(186,117,23,0.3);flex-shrink:0;">'
-        html+='<div style="position:relative;width:13px;height:13px;display:flex;align-items:center;justify-content:center;">'
+        html+='<div style="display:flex;align-items:center;gap:6px;padding:5px 9px 5px 7px;border-radius:8px;background:rgba(186,117,23,0.18);border:1px solid rgba(186,117,23,0.3);margin-bottom:8px;min-width:0;">'
+        html+='<div style="position:relative;width:13px;height:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">'
         html+='<div style="position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(186,117,23,0.5);animation:loadSonar 2s ease-out infinite;"></div>'
         html+='<div style="position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(186,117,23,0.3);animation:loadSonar 2s ease-out infinite 0.7s;"></div>'
         html+='<svg width="11" height="11" viewBox="0 0 52 52" fill="none"><path d="M26 8 L29 21 L42 26 L29 31 L26 44 L23 31 L10 26 L23 21 Z" stroke="#BA7517" stroke-width="3" fill="rgba(186,117,23,0.25)" stroke-linejoin="round"/><circle cx="26" cy="26" r="3.5" fill="#BA7517"/></svg>'
         html+='</div>'
-        html+='<span style="font-size:10px;color:#BA7517;font-weight:500;letter-spacing:0.05em;max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(currentEv.name)+(currentEv.end_time?' · until '+currentEv.end_time:'')+'</span>'
+        html+='<span style="font-size:10px;color:#BA7517;font-weight:500;letter-spacing:0.05em;flex:1;min-width:0;word-break:break-word;">'+esc(currentEv.name)+(currentEv.end_time?' · until '+currentEv.end_time:'')+'</span>'
         html+='</div>'
       } else {
-        html+='<div style="display:flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;background:rgba(15,110,86,0.18);border:1px solid rgba(15,110,86,0.3);flex-shrink:0;">'
-        html+='<div style="width:5px;height:5px;border-radius:50%;background:#0F6E56;"></div>'
+        html+='<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;background:rgba(15,110,86,0.18);border:1px solid rgba(15,110,86,0.3);margin-bottom:8px;">'
+        html+='<div style="width:5px;height:5px;border-radius:50%;background:#0F6E56;flex-shrink:0;"></div>'
         html+='<span style="font-size:10px;color:#3dbd9e;font-weight:500;letter-spacing:0.05em;">Available</span>'
         html+='</div>'
       }
-      html+='</div>'
       if(!todos.length){
         html+='<div class="agenda-empty" style="color:rgba(250,247,242,0.4);">Nothing scheduled</div>'
       } else {
@@ -1529,10 +1572,11 @@ function renderAgenda() {
           var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':('openEditTask(\''+task.id+'\')')
           var calTagToday=task.tag?'<span style="font-size:9px;font-weight:600;color:#BA7517;flex-shrink:0;letter-spacing:0.02em;">['+esc(task.tag)+']</span>':''
           var noteGlyphToday=task.note&&task.note.trim()?'<span style="font-size:9px;color:rgba(186,117,23,0.5);flex-shrink:0;font-weight:600;" title="Has note">≡</span>':''
+          var overdueTag=task._overdueDate?'<span style="font-size:9px;color:rgba(216,90,48,0.95);font-weight:600;flex-shrink:0;padding:1px 5px;background:rgba(216,90,48,0.12);border-radius:4px;margin-left:4px;white-space:nowrap;">'+esc(task._overdueDate)+' · '+esc(task._daysAgo)+'</span>':''
           html+='<div id="cal-task-'+task.id+'" class="agenda-event-row" style="border-bottom-color:rgba(250,247,242,0.08);cursor:pointer;" onclick="'+clickFn+'">'
           html+='<span style="font-size:10px;min-width:68px;flex-shrink:0;color:'+(taskTime?'#BA7517':'rgba(250,247,242,0.4)')+';font-variant-numeric:tabular-nums;white-space:nowrap;">'+timeLabel+'</span>'
           html+=calTagToday+noteGlyphToday
-          html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'flex:1;min-width:0;word-break:break-word;">'+esc(task.name)+'</span>'
+          html+='<span class="agenda-note" style="color:rgba(250,247,242,0.9);'+doneCls+'flex:1;min-width:0;display:flex;align-items:center;gap:0;flex-wrap:wrap;word-break:break-word;">'+esc(task.name)+overdueTag+'</span>'
           html+=(!task.isTracker?'<button onclick="event.stopPropagation();'+(task.completed?'uncompleteTask':'completeTask')+'(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:'+(task.completed?'rgba(15,110,86,0.9)':'rgba(250,247,242,0.6)')+';font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="'+(task.completed?'Undo done':'Done')+'">✓</button>':'')
           html+=(!task.isTracker?'<button onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" style="opacity:0.45;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:rgba(250,247,242,0.6);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.45\'" title="Delete">🗑</button>':'')
           html+='</div>'
@@ -1557,7 +1601,6 @@ function renderAgenda() {
           html+=calTag+noteGlyph
           html+='<span class="agenda-note" style="color:var(--brown2);'+doneCls+'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(task.name)+'</span>'
           html+=(!task.isTracker?'<button onclick="event.stopPropagation();'+(task.completed?'uncompleteTask':'completeTask')+'(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:'+(task.completed?'var(--green)':'var(--brown4)')+';font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="'+(task.completed?'Undo done':'Done')+'">✓</button>':'')
-          html+=(!task.isTracker?'<button onclick="event.stopPropagation();moveToToday(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Move to today">⬆</button>':'')
           html+=(!task.isTracker?'<button onclick="event.stopPropagation();deleteTask(\''+task.id+'\')" style="opacity:0.35;transition:opacity 0.15s;background:none;border:none;cursor:pointer;color:var(--brown4);font-size:13px;padding:2px 4px;border-radius:5px;flex-shrink:0;" onmouseenter="this.style.opacity=\'1\'" onmouseleave="this.style.opacity=\'0.35\'" title="Delete">🗑</button>':'')
           html+='</div>'
         })
