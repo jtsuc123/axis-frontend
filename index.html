@@ -22,7 +22,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}html,body{height:100%;}
 body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--brown);font-size:14px;line-height:1.5;transition:background 0.2s,color 0.2s;}
 #auth-overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(61,52,42,0.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px;}
-#auth-overlay *{cursor:auto;}.token-grid{cursor:none !important;}.token-grid *{cursor:none !important;}
+#auth-overlay *{cursor:auto;}.token-grid{cursor:none !important;}.token-grid *{cursor:none !important;}.token-btn:hover{cursor:pointer !important;}
 #auth-overlay.show{display:flex;}
 .auth-card{background:rgba(250,247,242,0.96);border-radius:20px;padding:36px 32px;width:100%;max-width:340px;box-shadow:0 8px 48px rgba(61,52,42,0.3);border:1px solid rgba(255,255,255,0.7);animation:authIn 0.25s ease;}
 [data-theme="dark"] .auth-card{background:rgba(30,26,22,0.97);border:1px solid rgba(51,43,34,0.8);}
@@ -35,9 +35,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--brown)
 .auth-subtitle{font-size:12px;color:var(--brown3);margin-bottom:8px;filter:blur(0.5px);}
 .auth-label{font-size:10px;color:var(--brown4);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:12px;font-weight:500;filter:blur(0.5px);}
 .token-grid{position:relative;width:100%;height:180px;margin-bottom:24px;overflow:hidden;border-radius:12px;}
-.token-btn{position:absolute;background:rgba(255,255,255,0.85);border:1px solid var(--cream3);border-radius:20px;padding:8px 16px;font-size:13px;color:var(--brown);cursor:none;font-family:'DM Serif Display',serif;letter-spacing:0.01em;white-space:nowrap;transition:background 0.12s,border-color 0.12s;user-select:none;}
+.token-btn{position:absolute;background:rgba(255,255,255,0.85);border:1px solid var(--cream3);border-radius:20px;padding:8px 16px;font-size:13px;color:var(--brown);cursor:none;font-family:'DM Serif Display',serif;letter-spacing:0.01em;white-space:nowrap;transition:background 0.12s,border-color 0.12s,opacity 0.08s;user-select:none;will-change:transform;}
 [data-theme="dark"] .token-btn{background:rgba(39,34,25,0.9);border-color:rgba(51,43,34,0.6);}
-.token-btn:hover{filter:blur(6px);opacity:0.3;}
+.token-btn:hover{opacity:0.75;border-color:var(--brown3);}
 .auth-card-blur{filter:blur(3px);transition:filter 0.1s;}
 .auth-footer{text-align:center;font-size:11px;color:var(--brown4);filter:blur(0.5px);}
 .auth-footer a{color:var(--blue);cursor:pointer;text-decoration:none;}
@@ -846,6 +846,21 @@ document.getElementById('theme-toggle').addEventListener('click', () => applyThe
 
 function today()          { var d=new Date(); d.setHours(0,0,0,0); return d }
 function esc(s)           { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+// Timezone helpers — convert between local HH:MM+date and UTC ms timestamps.
+// 'YYYY-MM-DDT00:00:00' (no Z) is parsed as LOCAL midnight by the browser.
+function computeTimeUtcMs(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null
+  var parts = timeStr.split(':').map(Number)
+  var d = new Date(dateStr + 'T00:00:00')
+  d.setHours(parts[0], parts[1], 0, 0)
+  return d.getTime()
+}
+function utcMsToLocalHHMM(utcMs) {
+  if (utcMs == null) return null
+  var d = new Date(utcMs)
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0')
+}
 function toast(msg)       { var el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2500) }
 function daysBetween(a,b) { return Math.round((b-a)/86400000) }
 
@@ -901,23 +916,25 @@ async function buildTokenGrid() {
 function renderTokenGrid(tokens) {
   var grid=document.getElementById('token-grid'); grid.innerHTML=''
   if (window._shuffleInterval) { cancelAnimationFrame(window._shuffleInterval); window._shuffleInterval=null }
-  var floaters=[], H=180
-  tokens.forEach(function(word) {
+  var H=180, W=grid.offsetWidth||320, floaters=[]
+  // Append all buttons first, then batch-read dimensions (single reflow)
+  var entries=tokens.map(function(word){
     var btn=document.createElement('button'); btn.className='token-btn'; btn.textContent=word
-    btn.onclick=function(){ checkToken(word) }; grid.appendChild(btn)
-    var bw=btn.offsetWidth||80, bh=btn.offsetHeight||34, W=grid.offsetWidth||280
-    var x=Math.random()*(W-bw), y=Math.random()*(H-bh), sp=0.6+Math.random()*0.5, ang=Math.random()*Math.PI*2
-    btn.style.left=x+'px'; btn.style.top=y+'px'
+    btn.onclick=function(){ checkToken(word) }; grid.appendChild(btn); return btn
+  })
+  entries.forEach(function(btn){
+    var bw=btn.offsetWidth||80, bh=btn.offsetHeight||34
+    var x=Math.random()*(W-bw), y=Math.random()*(H-bh), sp=2.5+Math.random()*2.0, ang=Math.random()*Math.PI*2
+    btn.style.transform='translate('+x+'px,'+y+'px)'
     floaters.push({el:btn,x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,bw,bh})
   })
-  function tick() {
+  function tick(){
     window._shuffleInterval=requestAnimationFrame(tick)
-    var W=grid.offsetWidth||280
-    floaters.forEach(function(t) {
+    floaters.forEach(function(t){
       t.x+=t.vx; t.y+=t.vy
       if(t.x<0){t.x=0;t.vx=Math.abs(t.vx)} if(t.x>W-t.bw){t.x=W-t.bw;t.vx=-Math.abs(t.vx)}
       if(t.y<0){t.y=0;t.vy=Math.abs(t.vy)} if(t.y>H-t.bh){t.y=H-t.bh;t.vy=-Math.abs(t.vy)}
-      t.el.style.left=t.x+'px'; t.el.style.top=t.y+'px'
+      t.el.style.transform='translate('+t.x+'px,'+t.y+'px)'
     })
   }
   tick()
@@ -1396,10 +1413,13 @@ function openEditTask(id) {
   document.getElementById('f-name').value=task.name||''
   document.getElementById('f-note').value=task.note||''
   document.getElementById('f-tag').value=task.tag||''
-  var dd=task.due_date?(typeof task.due_date==='number'?new Date(task.due_date):new Date(parseInt(task.due_date))):null
-  document.getElementById('f-date').value=dd?dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0')+'-'+String(dd.getDate()).padStart(2,'0'):''
-  document.getElementById('f-start').value=task.time||''
-  document.getElementById('f-end').value=task.end_time||''
+  var _editD, _editTimeStr, _editEndStr
+  if(task.time_utc_ms){_editD=new Date(task.time_utc_ms);_editTimeStr=utcMsToLocalHHMM(task.time_utc_ms)}
+  else{_editD=task.due_date?(typeof task.due_date==='number'?new Date(task.due_date):new Date(parseInt(task.due_date))):null;_editTimeStr=task.time||''}
+  _editEndStr=task.end_time_utc_ms?utcMsToLocalHHMM(task.end_time_utc_ms):(task.end_time||'')
+  document.getElementById('f-date').value=_editD?_editD.getFullYear()+'-'+String(_editD.getMonth()+1).padStart(2,'0')+'-'+String(_editD.getDate()).padStart(2,'0'):''
+  document.getElementById('f-start').value=_editTimeStr
+  document.getElementById('f-end').value=_editEndStr
   var notifyStored=task.notify_before!=null?String(task.notify_before):'10'
   var knownVals=['','5','10','30','60','720','1440']
   if(knownVals.includes(notifyStored)){document.getElementById('f-notify').value=notifyStored;document.getElementById('f-notify-custom').style.display='none'}
@@ -1425,7 +1445,8 @@ document.getElementById('modal-save').addEventListener('click', async function()
   if(!name){toast('Task name required');return}
   var notifyVal=document.getElementById('f-notify').value
   var notifyMins=notifyVal==='custom'?parseInt(document.getElementById('f-notify-custom').value)||10:notifyVal?parseInt(notifyVal):null
-  var body={name, due_date:document.getElementById('f-date').value||null, start_time:document.getElementById('f-start').value||null, end_time:document.getElementById('f-end').value||null, tag:document.getElementById('f-tag').value||null, note:document.getElementById('f-note').value.trim()||null, notify_before:notifyMins}
+  var _fDate=document.getElementById('f-date').value||null,_fStart=document.getElementById('f-start').value||null,_fEnd=document.getElementById('f-end').value||null
+  var body={name,due_date:_fDate,start_time:_fStart,end_time:_fEnd,tag:document.getElementById('f-tag').value||null,note:document.getElementById('f-note').value.trim()||null,notify_before:notifyMins,time_utc_ms:computeTimeUtcMs(_fDate,_fStart),end_time_utc_ms:computeTimeUtcMs(_fDate,_fEnd)}
   var res
   if(state.editingTask) res=await PATCH(`/tasks/${state.editingTask.id}`,body)
   else res=await POST('/tasks',body)
@@ -1460,8 +1481,8 @@ function renderAgenda() {
   var overdueForToday=[], overdueIds=new Set()
   todoTasks.forEach(function(task){
     if(!task.due_date) return
-    var d=new Date(typeof task.due_date==='number'?task.due_date:parseInt(task.due_date)); d.setHours(0,0,0,0)
-    var key=d.getTime()
+    var _db; if(task.time_utc_ms){_db=new Date(task.time_utc_ms);_db.setHours(0,0,0,0)}else{_db=new Date(typeof task.due_date==='number'?task.due_date:parseInt(task.due_date));_db.setHours(0,0,0,0)}
+    var key=_db.getTime()
     if(!tasksByDate[key]) tasksByDate[key]=[]
     tasksByDate[key].push(task)
     if(!task.completed && key<todayTs){
@@ -1478,13 +1499,12 @@ function renderAgenda() {
 
   ;(state.data.tracker || []).forEach(function(ev) {
     if (!ev.date) return
-    var d = new Date(typeof ev.date === 'number' ? ev.date : parseInt(ev.date))
-    d.setHours(0,0,0,0)
-    var key = d.getTime()
+    var _evD; if(ev.time_utc_ms){_evD=new Date(ev.time_utc_ms);_evD.setHours(0,0,0,0)}else{_evD=new Date(typeof ev.date==='number'?ev.date:parseInt(ev.date));_evD.setHours(0,0,0,0)}
+    var key = _evD.getTime()
     if (!tasksByDate[key]) tasksByDate[key] = []
-    var startTime = ev.minutes != null ? String(Math.floor(ev.minutes/60)).padStart(2,'0')+':'+String(ev.minutes%60).padStart(2,'0') : null
-    var endTime   = ev.end_minutes != null ? String(Math.floor(ev.end_minutes/60)).padStart(2,'0')+':'+String(ev.end_minutes%60).padStart(2,'0') : null
-    tasksByDate[key].push({id:ev.id,name:ev.value,time:startTime,end_time:endTime,note:ev.note,tag:ev.tag||null,isTracker:true})
+    var startTime = ev.time_utc_ms ? utcMsToLocalHHMM(ev.time_utc_ms) : (ev.minutes != null ? String(Math.floor(ev.minutes/60)).padStart(2,'0')+':'+String(ev.minutes%60).padStart(2,'0') : null)
+    var endTime   = ev.end_time_utc_ms ? utcMsToLocalHHMM(ev.end_time_utc_ms) : (ev.end_minutes != null ? String(Math.floor(ev.end_minutes/60)).padStart(2,'0')+':'+String(ev.end_minutes%60).padStart(2,'0') : null)
+    tasksByDate[key].push({id:ev.id,name:ev.value,time:startTime,end_time:endTime,note:ev.note,tag:ev.tag||null,isTracker:true,time_utc_ms:ev.time_utc_ms||null,end_time_utc_ms:ev.end_time_utc_ms||null})
   })
 
   // Today's view starts at yesterday (-1); earlier view (calOffset<0) is rendered newest-first
@@ -1536,9 +1556,10 @@ function renderAgenda() {
       html+='<div class="agenda-today-card">'
       var nowH2=new Date().getHours(), nowM2=new Date().getMinutes(), nowMins2=nowH2*60+nowM2
       var currentEv=todos.find(function(tk){
-        var tt=tk.time||tk.due_time; if(!tt||tk.completed) return false
+        var tt=tk.time_utc_ms?utcMsToLocalHHMM(tk.time_utc_ms):(tk.time||tk.due_time); if(!tt||tk.completed) return false
         var tp=tt.split(':'), tMin=parseInt(tp[0])*60+parseInt(tp[1])
-        if(tk.end_time){var ep=tk.end_time.split(':'),eMin=parseInt(ep[0])*60+parseInt(ep[1]);return nowMins2>=tMin&&nowMins2<eMin}
+        var et=tk.end_time_utc_ms?utcMsToLocalHHMM(tk.end_time_utc_ms):tk.end_time
+        if(et){var ep=et.split(':'),eMin=parseInt(ep[0])*60+parseInt(ep[1]);return nowMins2>=tMin&&nowMins2<eMin}
         return nowMins2>=tMin&&nowMins2<tMin+60
       })
       // Date header row
@@ -1554,7 +1575,8 @@ function renderAgenda() {
         html+='<div style="position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(186,117,23,0.3);animation:loadSonar 2s ease-out infinite 0.7s;"></div>'
         html+='<svg width="11" height="11" viewBox="0 0 52 52" fill="none"><path d="M26 8 L29 21 L42 26 L29 31 L26 44 L23 31 L10 26 L23 21 Z" stroke="#BA7517" stroke-width="3" fill="rgba(186,117,23,0.25)" stroke-linejoin="round"/><circle cx="26" cy="26" r="3.5" fill="#BA7517"/></svg>'
         html+='</div>'
-        html+='<span style="font-size:10px;color:#BA7517;font-weight:500;letter-spacing:0.05em;flex:1;min-width:0;word-break:break-word;">'+esc(currentEv.name)+(currentEv.end_time?' · until '+currentEv.end_time:'')+'</span>'
+        var _curEnd=currentEv.end_time_utc_ms?utcMsToLocalHHMM(currentEv.end_time_utc_ms):currentEv.end_time
+        html+='<span style="font-size:10px;color:#BA7517;font-weight:500;letter-spacing:0.05em;flex:1;min-width:0;word-break:break-word;">'+esc(currentEv.name)+(_curEnd?' · until '+_curEnd:'')+'</span>'
         html+='</div>'
       } else {
         html+='<div style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:6px;background:rgba(15,110,86,0.18);border:1px solid rgba(15,110,86,0.3);margin-bottom:8px;">'
@@ -1567,8 +1589,9 @@ function renderAgenda() {
       } else {
         todos.forEach(function(task){
           var doneCls=task.completed?'text-decoration:line-through;opacity:0.4;':''
-          var taskTime=task.time||task.due_time
-          var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
+          var taskTime=task.time_utc_ms?utcMsToLocalHHMM(task.time_utc_ms):(task.time||task.due_time)
+          var taskEndTime=task.end_time_utc_ms?utcMsToLocalHHMM(task.end_time_utc_ms):task.end_time
+          var timeLabel=taskTime?(taskEndTime?taskTime+' - '+taskEndTime:taskTime):'TODO'
           var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':('openEditTask(\''+task.id+'\')')
           var calTagToday=task.tag?'<span style="font-size:9px;font-weight:600;color:#BA7517;flex-shrink:0;letter-spacing:0.02em;">['+esc(task.tag)+']</span>':''
           var noteGlyphToday=task.note&&task.note.trim()?'<span style="font-size:9px;color:rgba(186,117,23,0.5);flex-shrink:0;font-weight:600;" title="Has note">≡</span>':''
@@ -1591,8 +1614,9 @@ function renderAgenda() {
       } else {
         todos.forEach(function(task){
           var doneCls=task.completed?'text-decoration:line-through;color:var(--brown4);':''
-          var taskTime=task.time||task.due_time
-          var timeLabel=taskTime?(task.end_time?taskTime+' - '+task.end_time:taskTime):'TODO'
+          var taskTime=task.time_utc_ms?utcMsToLocalHHMM(task.time_utc_ms):(task.time||task.due_time)
+          var taskEndTime=task.end_time_utc_ms?utcMsToLocalHHMM(task.end_time_utc_ms):task.end_time
+          var timeLabel=taskTime?(taskEndTime?taskTime+' - '+taskEndTime:taskTime):'TODO'
           var clickFn=task.isTracker?'openTrackerEventModal(\''+task.id+'\')':('openEditTask(\''+task.id+'\')')
           var calTag=task.tag?(function(){var ctc2=tagColor(task.tag);return '<span style="font-size:9px;font-weight:600;color:'+ctc2.color+';flex-shrink:0;letter-spacing:0.02em;">['+esc(task.tag)+']</span>'})():''
           var noteGlyph=task.note&&task.note.trim()?'<span style="font-size:9px;color:var(--brown4);flex-shrink:0;font-weight:600;opacity:0.6;" title="Has note">≡</span>':''
@@ -1658,7 +1682,8 @@ var FIN_CATEGORIES=[
 var CURRENCY_LABELS={TWD:'NTD$',NTD:'NTD$',USD:'USD$',AUD:'AUD$',EUR:'€',GBP:'£',JPY:'JP¥',KRW:'₩',SGD:'SGD$',HKD:'HKD$',CNY:'¥',THB:'฿',MYR:'MYR$',PHP:'₱',IDR:'Rp',VND:'₫',INR:'₹',CAD:'CAD$',NZD:'NZD$',CHF:'CHF'}
 
 var FX_FALLBACK={TWD:1,USD:32.0,EUR:34.8,JPY:0.21,GBP:41.5,AUD:20.5,SGD:24.0,HKD:4.1,KRW:0.023}
-var finState={data:null,displayCurrency:'TWD',fxRates:{},selectedMonth:null,txOffset:0,TX_PAGE:20,editingTxId:null,editingOutId:null,searchQuery:'',allTxs:[]}
+var _tzFinCurrency={'Asia/Taipei':'TWD','Asia/Tokyo':'JPY','America/New_York':'USD','America/Los_Angeles':'USD','America/Chicago':'USD','America/Denver':'USD','America/Phoenix':'USD','Europe/London':'GBP','Europe/Paris':'EUR','Europe/Berlin':'EUR','Australia/Sydney':'AUD','Asia/Singapore':'SGD','Asia/Hong_Kong':'HKD','Asia/Seoul':'KRW'}
+var finState={data:null,displayCurrency:_tzFinCurrency[Intl.DateTimeFormat().resolvedOptions().timeZone]||'TWD',fxRates:{},selectedMonth:null,txOffset:0,TX_PAGE:20,editingTxId:null,editingOutId:null,searchQuery:'',allTxs:[]}
 
 function finFmt(amount,currency){
   currency=(currency||finState.displayCurrency||'TWD').toUpperCase()
@@ -2032,11 +2057,14 @@ function openTrackerEventModal(id){
   var ev=(state.data?.tracker||[]).find(e=>e.id===id); if(!ev) return
   _editingTrackerEventId=id
   document.getElementById('tev-name').value=ev.value||''
-  var d=new Date(typeof ev.date==='number'?ev.date:parseInt(ev.date))
-  document.getElementById('tev-date').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')
   var toTime=function(mins){if(mins==null)return '';return String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0')}
-  document.getElementById('tev-start').value=toTime(ev.minutes)
-  document.getElementById('tev-end').value=toTime(ev.end_minutes)
+  var _tevD,_tevStartStr,_tevEndStr
+  if(ev.time_utc_ms){_tevD=new Date(ev.time_utc_ms);_tevStartStr=utcMsToLocalHHMM(ev.time_utc_ms)}
+  else{_tevD=new Date(typeof ev.date==='number'?ev.date:parseInt(ev.date));_tevStartStr=toTime(ev.minutes)}
+  _tevEndStr=ev.end_time_utc_ms?utcMsToLocalHHMM(ev.end_time_utc_ms):toTime(ev.end_minutes)
+  document.getElementById('tev-date').value=_tevD.getFullYear()+'-'+String(_tevD.getMonth()+1).padStart(2,'0')+'-'+String(_tevD.getDate()).padStart(2,'0')
+  document.getElementById('tev-start').value=_tevStartStr
+  document.getElementById('tev-end').value=_tevEndStr
   document.getElementById('tev-note').value=ev.note||''
   document.getElementById('tev-tag').value=ev.tag||''
   var tevNotify=ev.notify_before!=null?String(ev.notify_before):''
@@ -2054,7 +2082,8 @@ async function saveTrackerEvent(){
   var dateTs=new Date(parseInt(dp[0]),parseInt(dp[1])-1,parseInt(dp[2]),12,0,0).getTime()
   var tevNotifyVal=document.getElementById('tev-notify').value
   var tevNotifyMins=tevNotifyVal==='custom'?parseInt(document.getElementById('tev-notify-custom').value)||10:tevNotifyVal?parseInt(tevNotifyVal):null
-  var body={name,date:dateTs,start_time:document.getElementById('tev-start').value||null,end_time:document.getElementById('tev-end').value||null,note:document.getElementById('tev-note').value.trim()||null,tag:document.getElementById('tev-tag').value||null,notify_before:tevNotifyMins}
+  var _tevDateStr=document.getElementById('tev-date').value,_tevStart=document.getElementById('tev-start').value||null,_tevEnd=document.getElementById('tev-end').value||null
+  var body={name,date:dateTs,start_time:_tevStart,end_time:_tevEnd,note:document.getElementById('tev-note').value.trim()||null,tag:document.getElementById('tev-tag').value||null,notify_before:tevNotifyMins,time_utc_ms:computeTimeUtcMs(_tevDateStr,_tevStart),end_time_utc_ms:computeTimeUtcMs(_tevDateStr,_tevEnd)}
   var btn=document.querySelector('#tracker-event-modal .btn-primary'); btn.textContent='Saving...'; btn.disabled=true
   const res=await PATCH('/tracker/'+_editingTrackerEventId,body)
   btn.textContent='Save'; btn.disabled=false
@@ -2111,7 +2140,8 @@ async function handleOrbitAction(action,data){
   switch(action){
     case 'addTask':
     case 'reviewTask':
-      res=await POST('/tasks',{name:data.name||data.taskName,due_date:data.due_date||null,due_time:data.due_time||data.startTime||null,tag:data.tag||null,note:data.note||null,notify_before:data.notify_before||null})
+      var _odd=data.due_date||null,_odt=data.due_time||data.startTime||null
+      res=await POST('/tasks',{name:data.name||data.taskName,due_date:_odd,due_time:_odt,tag:data.tag||null,note:data.note||null,notify_before:data.notify_before||null,time_utc_ms:computeTimeUtcMs(_odd,_odt),end_time_utc_ms:computeTimeUtcMs(_odd,data.end_time||null)})
       if(res?.success){
         toast('Task added')
         state.pendingHighlight='cal-task-'+res.task.id
@@ -2121,7 +2151,8 @@ async function handleOrbitAction(action,data){
       } else toast('Error: '+res?.error)
       break
     case 'addTrackerEvent':
-      res=await POST('/tracker',{name:data.name,date:data.date,start_time:data.start_time,end_time:data.end_time||null,tag:data.tag||null,note:data.note||null})
+      var _oevDateStr=data.date?(typeof data.date==='number'?new Date(data.date).toISOString().slice(0,10):data.date):null
+      res=await POST('/tracker',{name:data.name,date:data.date,start_time:data.start_time,end_time:data.end_time||null,tag:data.tag||null,note:data.note||null,time_utc_ms:computeTimeUtcMs(_oevDateStr,data.start_time||null),end_time_utc_ms:computeTimeUtcMs(_oevDateStr,data.end_time||null)})
       if(res?.success){toast('Added to calendar');switchView('calendar');loadData(true)}
       break
     case 'deleteTask':
