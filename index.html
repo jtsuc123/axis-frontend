@@ -926,7 +926,7 @@ function renderTokenGrid(tokens) {
   var allBtns=grid.querySelectorAll('.token-btn')
   allBtns.forEach(function(btn){
     var bw=btn.offsetWidth||80, bh=btn.offsetHeight||34
-    var x=Math.random()*(W-bw), y=Math.random()*(H-bh), sp=6+Math.random()*4, ang=Math.random()*Math.PI*2
+    var x=Math.random()*(W-bw), y=Math.random()*(H-bh), sp=1.2+Math.random()*0.8, ang=Math.random()*Math.PI*2
     btn.style.left=x+'px'; btn.style.top=y+'px'
     floaters.push({el:btn,x,y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,bw,bh})
   })
